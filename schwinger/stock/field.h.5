@@ -1,0 +1,63 @@
+#pragma once
+
+#include <common.h>
+#include <matrix.h>
+
+template<int spin, int mu>
+class FieldArgs {
+  public: 
+    static constexpr int S  = spin;                   //number of spin dof (2 for spinor)
+    static constexpr int M  = mu;                     //vector field dim   (2 for U1 gauge) 							 
+  privat:
+    const std::array<int, 2> dims;		
+    const FieldSiteSubset    subset;
+    //
+    FieldParity              parity;
+
+  public:   
+    FieldArgs(const int L, 
+	      const int T, 
+	      const FieldSiteSubset subset   = FieldSiteSubset::FullSiteSubset,  
+	      const FieldParity parity       = FieldParity::InvalidFieldParity) : 
+	      dims{L, T},
+	      subset(subset),
+	      parity(parity) {}    
+};
+
+using GaugeFieldArgs  = FieldArgs<1,2>;
+using SpinorFieldArgs = FieldArgs<2,1>;
+
+template <ComplexTp T, typename Arg>
+class Field{
+  public:	
+    //
+    static constexpr int S      = Arg::S;                     //
+    static constexpr int M      = Arg::M;                     //
+
+  privat: 
+    std::vector<T> data;
+
+    const Arg &arg;
+
+  public:
+    //
+    Field(const Arg &arg) : data{arg.dims[0]*args.dims[1]*S*M}, 
+	                    arg(arg) {}
+
+    auto& Get( ) const { return data; }
+
+    //Note this method returns iterator
+    auto& Get( int parity_idx ) {
+      if constexpr (parity){
+        return data.begin();	      
+      } 
+
+      const int volh = data.size() / 2;
+      return (data.begin()+parity_idx*volh);
+    }
+
+    auto GetLength()       const { return data.size(); }
+    auto GetParityLength() const { return data.size() / (Arg::parity == 0 ? 2 : 1); }
+};
+
+

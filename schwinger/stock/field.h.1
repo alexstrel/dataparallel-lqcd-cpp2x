@@ -1,0 +1,32 @@
+#pragma once
+
+#include <common.h>
+#include <matrix.h>
+
+template <ComplexTp T>
+class ParityField{
+
+      std::vector<T> data;
+
+    public:
+      //
+      ParityField(const int volh) : data{volh}{}
+
+      auto& Get()  { return data; }
+};
+
+template <ComplexTp T>
+class Field{
+
+      ParityField even;
+      ParityField odd;
+
+    public:
+      //
+      Field(const int cb_vol) : even{cb_vol}, odd{cb_vol} {}      
+      
+      auto& Even()  { return even; }
+      auto& Odd()   { return odd;  }
+};
+
+

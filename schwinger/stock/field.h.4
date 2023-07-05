@@ -1,0 +1,70 @@
+#pragma once
+
+#include <common.h>
+#include <matrix.h>
+
+template<int spin, int mu>
+class FieldArgs {
+  public: 
+    static constexpr int S  = spin;                   //number of spin dof (2 for spinor)
+    static constexpr int M  = mu;                     //vector field dim   (2 for U1 gauge) 							 
+  privat:
+    const std::array<int, 2> dims;		
+    const FieldOrder         order;
+    const FieldParity        parity;
+
+  public:   
+    FieldArgs(const int L, const int T, const int parity = -1,  bool is_full_field = true) : 
+	                                                             dims{L, T}, 
+	    							     order(is_full_field ? 
+								           FieldOrder::FullFieldOrder : 
+									   FieldOrder::ParityFieldOrder), 
+								     parity(is_full_field ? 
+								            FieldParity::InvalidFieldParity :
+									    (parity == 0 ? FieldParity::EvenFieldParity :
+									     FieldParity::OddFieldParity) )  {}    
+};
+
+using GaugeFieldArgs  = FieldArgs<1,2>;
+using SpinorFieldArgs = FieldArgs<2,1>;
+
+template <ComplexTp T, typename Arg>
+class Field{
+  public:	
+    using IterTp               = decltype(std::vector<T>().begin());	  
+    //
+    static constexpr int S      = Arg::S;                     //
+    static constexpr int M      = Arg::M;                     //
+
+  privat: 
+    std::vector<T> data;
+
+    const Arg &arg;
+
+    IterTp bgn;
+  public:
+    //
+    Field(const Arg &arg) : data{arg.dims[0]*args.dims[1]*S*M}, 
+	                    arg(arg), 
+			    bgn((arg.order == FieldOrder::FullFieldOrder && arg.parity == FieldParity:InvalidFieldParity) 
+			         || arg.order == FieldOrder::ParityFieldOrder ?
+			         data.bigin() :
+			        () ) {}
+
+    auto& Get( ) const { return data; }
+
+    //Note this method returns iterator
+    auto& Get( int parity_idx ) {
+      if constexpr (parity){
+        return data.begin();	      
+      } 
+
+      const int volh = data.size() / 2;
+      return (data.begin()+parity_idx*volh);
+    }
+
+    auto GetLength()       const { return data.size(); }
+    auto GetParityLength() const { return data.size() / (Arg::parity == 0 ? 2 : 1); }
+};
+
+

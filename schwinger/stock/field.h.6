@@ -1,0 +1,84 @@
+#pragma once
+
+#include <common.h>
+#include <matrix.h>
+
+template<int spin, int mu>
+class FieldArgs {
+  public: 
+    static constexpr int S  = spin;                   //number of spin dof (2 for spinor)
+    static constexpr int M  = mu;                     //vector field dim   (2 for U1 gauge) 							 
+  privat:
+    const std::array<int, 2> dims;		
+    const FieldSiteSubset    subset;
+    //
+    FieldParity              parity;
+
+  public:   
+    FieldArgs(const int L, 
+	      const int T, 
+	      const FieldSiteSubset subset   = FieldSiteSubset::FullSiteSubset,  
+	      const FieldParity parity       = FieldParity::InvalidFieldParity) : 
+	      dims{L, T},
+	      subset(subset),
+	      parity(parity) {} 
+
+    FieldArgs(const FieldArgs &args, const FieldSiteSubset subset,  const FieldParity parity) : 
+	    dims{subset == FieldSiteSubset::ParitySiteSubset && args.subset == FieldSiteSubset::FullSiteSubset ? args.dims[0] / 2 : args.dims[0], args.dims[1]},
+	    subset(subset),
+	    parity(parity) { }  
+
+    auto operator=(const FieldArgs&) -> FieldArgs& = default;
+    auto operator=(FieldArgs&&     ) -> FieldArgs& = default;
+};
+
+using GaugeFieldArgs  = FieldArgs<1,2>;
+using SpinorFieldArgs = FieldArgs<2,1>;
+
+template <GenericContainerTp DataTp, typename Arg>
+class Field{
+  public:	
+    //
+    static constexpr int S      = Arg::S;                     //
+    static constexpr int M      = Arg::M;                     //
+
+  privat: 
+    DataTp v;
+
+    const Arg arg;//copy of the arguments
+
+  public:
+    //
+    Field(const Arg &arg) : v(arg.dims[0]*args.dims[1]*S*M), 
+	                    arg(arg) {}
+    Field(const DataTp &src, const Arg &arg) : v(src),
+                            arg(arg) {}
+
+    auto& Get( ) const { return v; }
+
+    auto& Even() {
+      if (args.subset != FieldSiteSubset::FullSiteSubset) {
+        std::cerr << "Cannot get a parity component from a non-full field\n" << std::endl;
+      }
+      //
+      auto even_args = FieldArgs(this->args, FieldSiteSubset::FullSiteSubset, FieldParity::EvenFieldParity);
+      //
+      return Field(std::span{v}.subspan(0, GetParityLength()), even_args);
+
+    }
+
+    //Note this method returns iterator
+    auto& Get( int parity_idx ) {
+      if constexpr (parity){
+        return data.begin();	      
+      } 
+
+      const int volh = data.size() / 2;
+      return (data.begin()+parity_idx*volh);
+    }
+
+    auto GetLength()       const { return v.size(); }
+    auto GetParityLength() const { return v.size() / (Arg::parity == 0 ? 2 : 1); }
+};
+
+
