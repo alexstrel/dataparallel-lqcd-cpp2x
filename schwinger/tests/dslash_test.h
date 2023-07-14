@@ -71,7 +71,7 @@ void run_dslash_test(auto params, const int X, const int T, const int niter) {
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;
   //  
-  const auto cs_param = SpinorFieldArgs<nSpinorParity>{{X, T}, {0, 0, 0, 0}};
+  const auto cs_param = SpinorFieldArgs<nSpinorParity>{{X, T}, {0, 0}};
   //
   auto src_spinor   = create_field<vector_tp, decltype(cs_param)>(cs_param);
   auto dst_spinor   = create_field<vector_tp, decltype(cs_param)>(cs_param);
@@ -92,23 +92,16 @@ void run_dslash_test(auto params, const int X, const int T, const int niter) {
   auto &dslash_args = *dslash_args_ptr;
 
   // Create dslash matrix
-  auto mat = DslashTransform<decltype(dslash_args), Dslash>{dslash_args};
-  //
-  const auto const1 = params.M + static_cast<Float>(2.0)*params.r;
-  const auto const2 = static_cast<Float>(0.5);
-
-  auto transformer = [=](const auto &x, const auto &y) {return (const1*x-const2*y);};
-  //
   auto wall_start = std::chrono::high_resolution_clock::now();
 
   auto [even_src, odd_src] = src_spinor.EODecompose();
   auto [even_dst, odd_dst] = dst_spinor.EODecompose();  
-  
+ 
+  auto mat = Mat<decltype(dslash_args), Dslash, decltype(params)>{dslash_args, params};
+
   for(int i = 0; i < niter; i++) {
-    // Apply dslash	  
-    mat(even_dst, odd_src,  even_src, transformer, FieldParity::EvenFieldParity);
-    mat(odd_dst,  even_src, odd_src,  transformer, FieldParity::OddFieldParity);    
-  } 
+    mat(dst_spinor, src_spinor);
+  }
  
   auto wall_stop = std::chrono::high_resolution_clock::now();
 
@@ -149,7 +142,7 @@ void run_mrhs_dslash_test(auto params, const int X, const int T, const int niter
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;  
   //  
-  const auto cs_param    = SpinorFieldArgs<nSpinorParity>{{X, T}, {0, 0, 0, 0}};
+  const auto cs_param    = SpinorFieldArgs<nSpinorParity>{{X, T}, {0, 0}};
   //
   const auto gauge_param = GaugeFieldArgs<nGaugeParity>{{X, T}, {0, 0}};
   //
@@ -165,7 +158,7 @@ void run_mrhs_dslash_test(auto params, const int X, const int T, const int niter
   auto &dslash_args = *dslash_args_ptr;
 
   // Create dslash matrix
-  auto mat = DslashTransform<decltype(dslash_args), Dslash>{dslash_args};    
+  auto mat = Mat<decltype(dslash_args), Dslash, decltype(params)>{dslash_args, params};
   //
   using spinor_t  = Field<vector_tp, decltype(cs_param)>;//
   //
@@ -174,24 +167,16 @@ void run_mrhs_dslash_test(auto params, const int X, const int T, const int niter
   auto chk_block_spinor = create_block_spinor< spinor_t, decltype(cs_param), use_pmr_buffer>(cs_param, N);     
   //
   for (int i = 0; i < src_block_spinor.nComponents(); i++) init_spinor( src_block_spinor.v[i] );
-
-  const auto const1 = params.M + static_cast<Float>(2.0)*params.r;
-  const auto const2 = static_cast<Float>(0.5);
-
-  auto transformer = [=](const auto &x, const auto &y) {return (const1*x-const2*y);}; 
-  
   //
   auto [even_src_block, odd_src_block] = src_block_spinor.EODecompose();
   auto [even_dst_block, odd_dst_block] = dst_block_spinor.EODecompose();  
   //
-  mat(even_dst_block, odd_src_block, even_src_block, transformer, FieldParity::EvenFieldParity);  
-  mat(odd_dst_block, even_src_block, odd_src_block, transformer, FieldParity::OddFieldParity);    
+  mat(dst_block_spinor, src_block_spinor);  
 
   auto wall_start = std::chrono::high_resolution_clock::now(); 
 
   for(int i = 0; i < niter; i++) {
-    mat(even_dst_block, odd_src_block, even_src_block, transformer, FieldParity::EvenFieldParity);
-    mat(odd_dst_block, even_src_block, odd_src_block,  transformer, FieldParity::OddFieldParity);        
+    mat(dst_block_spinor, src_block_spinor); 
   } 
 
   auto wall_stop = std::chrono::high_resolution_clock::now();

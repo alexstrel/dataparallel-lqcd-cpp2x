@@ -5,12 +5,13 @@
 template<GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive>
 class BlockSpinor; // forward declare to make function definition possible
 
-template <GenericSpinorFieldTp spinor_tp, typename Arg, bool use_pmr_buffer = false, bool is_exclusive = true>
+template <GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive = true>
 decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offset for block spinor
 
-  using data_tp = spinor_tp::container_tp::value_type;
+  using container_tp  = spinor_tp::container_tp;
+  using data_tp       = container_tp::value_type;
 
-  if constexpr ( use_pmr_buffer ) {
+  if constexpr ( is_pmr_allocator_aware_type<container_tp> ) {
     const std::size_t pmr_bytes = (arg_.GetFieldSize()+arg_.GetGhostZoneSize())*sizeof(data_tp)*n;
 
     const bool reserved = true;

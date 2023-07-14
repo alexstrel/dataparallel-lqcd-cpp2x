@@ -240,11 +240,20 @@ class Field{
 
     auto GetDims()         const { return arg.GetLatticeDims(); }
     auto GetCBDims()       const { return arg.GetParityLatticeDims(); }
+    
+    auto GetCommDims()     const { return arg.GetCommDims(); }    
+    auto GetCommDims( const int i )  const { return arg.GetCommDims(i); }
+    
+    auto GetFaceSize( const int i )  const { return arg.GetFaceSize(i); }    
    
     auto GetFieldOrder()   const { return arg.order; } 
     auto GetFieldParity()  const { return arg.parity; } 
 
     auto GetFieldSubset()  const { return arg.GetFieldSubset(); }  
+
+    const auto& GetMDStrides() const { return arg.GetMDStrides(); }
+
+    const auto& GetGhostMDStrides() const { return arg.GetGhostMDStrides(); }
     
     void Info() const {
       std::cout << "Full field dimensions: " << std::endl;
@@ -256,7 +265,7 @@ class Field{
     }  
     
     template<bool is_constant, std::size_t... dofs>
-    inline decltype(auto) mdaccessor(std::array<std::size_t, (Ndim() + sizeof...(dofs))> strides) const {
+    inline decltype(auto) mdaccessor(const std::array<std::size_t, (Ndim() + sizeof...(dofs))> &strides) const {
            
       using dyn_indx_type = std::size_t;
     
@@ -284,56 +293,71 @@ class Field{
       //
       static_assert(Ncolor() == 1, "Only O(1) model is supported.");
 
-      using dyn_indx_type     = std::size_t;
-      
-      const std::array X = GetCBDims();
+      const auto& stridesMD = GetMDStrides();
 
       if constexpr (Arg::type == FieldType::VectorFieldType) {      
-        constexpr int nDofs = (nParity == 1) ? 1 : 2;
         if constexpr (nParity == 1) {
-          auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1]};       
-          return mdaccessor<is_constant, nDir>(StridesMD);       
+          return mdaccessor<is_constant, nDir>(stridesMD);       
         } else {
-          auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1], X[0]*X[1]*nDir};       
-          return mdaccessor<is_constant, nDir, nParity>(StridesMD);               
+          return mdaccessor<is_constant, nDir, nParity>(stridesMD);               
         }
       } else {
-        constexpr int nDofs = (nParity == 1) ? 1 : 2;
-        
         if constexpr (nParity == 1) {
-          auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1]};       
-          return mdaccessor<is_constant, nSpin>(StridesMD);       
+          return mdaccessor<is_constant, nSpin>(stridesMD);       
         } else {
-          auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1], X[0]*X[1]*nSpin};       
-          return mdaccessor<is_constant, nSpin, nParity>(StridesMD);               
+          return mdaccessor<is_constant, nSpin, nParity>(stridesMD);               
         }        
       }
     }    
+
+    template<bool is_constant, std::size_t... dofs>
+    inline decltype(auto) ghost_mdaccessor(std::array<std::size_t, (Ndim()-1) + sizeof...(dofs)> strides, const int comm_dir) const {
+      constexpr int nFace         = Arg::nFace();     
+           
+      using dyn_indx_type = std::size_t;
+
+      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, stdex::dynamic_extent, dofs...>>;
+      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, dofs...>;
+          
+      const auto X = GetCommDims(comm_dir); 
+      
+      const auto offset = comm_dir*GetFaceSize(comm_dir)*nFace;//     
+      
+      if constexpr (is_constant){
+        return stdex::mdspan<const data_tp, ExtentsMD, stdex::layout_stride>{
+                    ghost.data()+offset, DynMDMap{ExtentsMD{X}, strides}} ;
+      } else {
+        return stdex::mdspan<data_tp, ExtentsMD, stdex::layout_stride>{
+                   const_cast<data_tp*>(ghost.data() + offset), DynMDMap{ExtentsMD{X}, strides}};
+      }                  
+    }      
     
     //Direct field accessors (note that ncolor always 1, so no slicing for this dof):
     template<bool is_constant = false>    
-    auto GhostAccessor() const {
+    auto GhostAccessor(const int comm_dir) const {
       //
-      constexpr std::size_t nDir = Ndir();      
-      constexpr int nParity      = Nparity(); 
-      //      
-      static_assert(Ncolor() == 1, "Only O(1) model is supported.");
-
-      using dyn_indx_type     = std::size_t;
+      constexpr std::size_t nDim  = Ndim() - 1;//only one direction            
       
-      const std::array X = GetCBDims();
+      constexpr std::size_t nSpin = Nspin();      
+      constexpr int nParity       = Nparity();
+      
+      constexpr std::size_t nFace = Arg::nFace();//only one direction                  
+
+      const auto& stridesMD = GetGhostMDStrides();
 
       if constexpr (Arg::type == FieldType::VectorFieldType) {      
-        constexpr int nDofs = 2;
-        
-        auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1], X[0]*X[1]*nDir};       
-        return mdaccessor<is_constant, nDir, nParity>(StridesMD);       
+        if constexpr (nParity == 1) {
+          return ghost_mdaccessor<is_constant>(stridesMD, comm_dir);       
+        } else {
+          return ghost_mdaccessor<is_constant, nParity>(stridesMD, comm_dir);               
+        }
       } else {
-        constexpr int nDofs = 2;
-        
-        auto StridesMD = std::array<dyn_indx_type, Ndim()+nDofs>{1, X[0], X[0]*X[1], X[0]*X[1]*nSpin};       
-        return mdaccessor<is_constant, nSpin, nParity>(StridesMD);                        
-      }
+        if constexpr (nParity == 1) {
+          return ghost_mdaccessor<is_constant, nSpin, nFace>(stridesMD, comm_dir);       
+        } else {
+          return ghost_mdaccessor<is_constant, nSpin, nParity, nFace>(stridesMD, comm_dir);               
+        }        
+      }      
     }    
     
 };

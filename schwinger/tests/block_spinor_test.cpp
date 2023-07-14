@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 
   using vector_tp = std::vector<std::complex<Float>>;
 
-  auto sargs = SpinorFieldArgs<nParity>{{X, T}, {0, 0, 0, 0}};
+  auto sargs = SpinorFieldArgs<nParity>{{X, T}, {0, 0}};
   //
   auto src_spinor = create_field<vector_tp, decltype(sargs)>(sargs);  
 
@@ -169,30 +169,32 @@ int main(int argc, char **argv)
   next_to_next_to_next_pmr_spinor.show();
   //
   print_range_v2(next_to_next_to_next_pmr_spinor, 4);
-
+#if 0
   std::cout << "Create Regular Block spinor" << std::endl;
   //
   using spinor_t = Field<vector_tp,  decltype(sargs)>;
   //
   auto block_src_spinor = create_block_spinor<spinor_t, decltype(sargs)>(sargs, N);
   //
+  std::cout << "Done\n" << std::endl;
+  //
   block_src_spinor[0].show();
   //
   for(int i = 0; i < block_src_spinor.nComponents(); i++) {
     init_spinor(block_src_spinor[i]);
+    std::cout << "Initialized component :" << i << std::endl;
     print_range_v2(block_src_spinor[i], 2);
     //
     block_src_spinor[i].show();
   }
-
+#endif
   std::cout << "Create PMR Block spinor" << std::endl;
   //
-  constexpr bool use_pmr_buffer = true;
   constexpr bool is_exclusive   = false;
   
   using pmr_spinor_t = Field<pmr_vector_tp,  decltype(sargs)>;
 
-  auto pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), use_pmr_buffer, is_exclusive>(sargs, N);
+  auto pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), is_exclusive>(sargs, N);
   //
   pmr_block_src_spinor[0].show();
 
@@ -209,7 +211,7 @@ int main(int argc, char **argv)
 
   using arg_tp = typename std::remove_cvref_t<decltype(pmr_block_src_spinor.ExportArg())>;
 
-  auto next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), use_pmr_buffer, is_exclusive>(sargs, N);
+  auto next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), is_exclusive>(sargs, N);
 {
   std::cout << "NEW block field data:: " << std::endl;
   next_pmr_block_src_spinor[0].show();
@@ -223,7 +225,7 @@ int main(int argc, char **argv)
   //
   next_pmr_block_src_spinor[0].show();
 
-  auto next_to_next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), use_pmr_buffer, is_exclusive>(sargs, N);
+  auto next_to_next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), is_exclusive>(sargs, N);
 {
   std::cout << "NEW NEXT block field data:: " << std::endl;
   next_to_next_pmr_block_src_spinor[0].show();
@@ -235,7 +237,7 @@ int main(int argc, char **argv)
   }
 }
 
-  auto next_to_next_to_next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), use_pmr_buffer, is_exclusive>(sargs, N);
+  auto next_to_next_to_next_pmr_block_src_spinor = create_block_spinor< pmr_spinor_t, decltype(sargs), is_exclusive>(sargs, N);
 {
   std::cout << "NEW NEXT NEXT block field data:: " << std::endl;
   next_to_next_to_next_pmr_block_src_spinor[0].show();

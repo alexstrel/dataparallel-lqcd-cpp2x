@@ -12,14 +12,16 @@ class FieldAccessor {
     
     using Indices  = std::make_index_sequence<F::Ndim()>;      
 
-    using AccessorTp      = typename std::remove_cvref_t< decltype( std::declval<F>().template Accessor<is_constant>()) >; //MDViewTp 
-    using GhostAccessorTp = typename std::remove_cvref_t< decltype( std::declval<F>().template Accessor<is_constant>()) >; //MDViewTp     
+    using AccessorTp      = typename std::remove_cvref_t< decltype( std::declval<F>().template Accessor<is_constant>()) >; //MDViewTp
+    using GhostAccessorTp = typename std::remove_cvref_t< decltype( std::declval<F>().template GhostAccessor<is_constant>( std::declval<const int>())) >; //MDViewTp     
   
     AccessorTp       field_accessor;
-    GhostAccessorTp  ghost_accessor;    
+    //
+    std::array<GhostAccessorTp, F::Ndim()>  ghost_accessor;    
     
-    FieldAccessor(const F &field ) : field_accessor(field.template Accessor<is_constant>()), 
-                                     ghost_accessor(field.template Accessor<is_constant>()) {}        
+    FieldAccessor(const F &field ) : field_accessor(field.template Accessor<is_constant>()),
+                                     ghost_accessor({field.template GhostAccessor<is_constant>(0), 
+                                                     field.template GhostAccessor<is_constant>(1)}) {}        
 
     inline constexpr decltype(auto) Extent(int d) const { return field_accessor.extent(d); }              
       
