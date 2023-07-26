@@ -6,9 +6,7 @@
 
 template<typename T> concept Indx = std::is_same_v<T, int> or std::is_same_v<T, std::size_t>;
 
-template<typename T> concept RangesTp = std::ranges::contiguous_range<T> 
-                                        and std::ranges::sized_range<T>
-                                        and std::ranges::viewable_range<T>;
+template<typename T> concept RangesTp = std::ranges::contiguous_range<T> and std::ranges::sized_range<T> and std::ranges::viewable_range<T>;
 
 template<GenericFieldTp F, bool is_constant = false, int bSize = 1>
 class FieldAccessor {
@@ -20,8 +18,8 @@ class FieldAccessor {
     
     using Indices  = std::make_index_sequence<F::Ndim()>;      
 
-    using AccessorTp      = typename std::remove_cvref_t< decltype( std::declval<F>().template Accessor<is_constant>()) >; //MDViewTp
-    using GhostAccessorTp = typename std::remove_cvref_t< decltype( std::declval<F>().template GhostAccessor<is_constant>( std::declval<const int>())) >; //MDViewTp     
+    using AccessorTp      = typename std::remove_cvref_t< decltype( std::declval<F>().template Accessor<is_constant>()) >; 
+    using GhostAccessorTp = typename std::remove_cvref_t< decltype( std::declval<F>().template GhostAccessor<is_constant>( std::declval<const int>())) >;
   
     AccessorTp       field_accessor;
     //
@@ -49,30 +47,54 @@ class FieldAccessor {
     template <Indx ...indx_tp>
     inline data_tp& operator()(indx_tp ...i) const { return field_accessor(i...); }    
 
-    template<std::size_t... Idxs, int nspin = F::Nspin()>
-    requires (nspin == 2) 
-    inline decltype(auto) load_spinor(std::index_sequence<Idxs...>, const RangesTp auto& x) const {
-    
-      std::array<data_tp, F::Ncolor()*F::Nspin()*bSize> spinor{this->field_accessor(x[Idxs]..., 0), this->field_accessor(x[Idxs]..., 1)};
-          
-      return SpinorTp(spinor);//2-component spinor
+
+
+    template<std::size_t... Idxs, FieldType type = F::Type()>
+    requires (type == StaggeredSpinorFieldType)
+    inline decltype(auto) load_parity_spinor(std::index_sequence<Idxs...>, const RangesTp auto& x) const {  
+      constexpr int ncolor = F::Ncolor();
+
+      auto spinor = [=]() {
+        std::array<data_tp, ncolor*bSize> tmp;
+#pragma unroll
+        for (int i = 0; i < ncolor; i++) {
+#pragma unroll
+          for (int b = 0; b < bSize; b++ ) {//bSize = 1
+            tmp[i*bSize+b] = this->field_accessor(x[Idxs]..., i);
+          }
+        } return tmp; } ();    
+
+      return SpinorTp(spinor);
     }
     
     template<FieldType field_type = F::type()>
     requires (field_type == FieldType::SpinorFieldType)        
     inline decltype(auto) operator()(const RangesTp auto &x) const {
-      return load_spinor(Indices{}, x);    
+      return load_parity_spinor(Indices{}, x);    
     }
 
-    template<std::size_t... Idxs, int ncolor = F::Ncolor()>
-    requires (ncolor == 1)
+    template<std::size_t... Idxs, FieldType = F::Type()>
+    requires (type == VectorFieldType)
     inline decltype(auto) load_parity_link(std::index_sequence<Idxs...>, const RangesTp auto& x, const int &d, const int &parity) const {
 
-      std::array<data_tp, F::Ncolor()*F::Ncolor()*bSize> link{this->field_accessor(x[Idxs]..., d, parity)};
+      constexpr int ncolor = F::Ncolor();
 
+      auto link = [=]() {
+        std::array<data_tp, ncolor*ncolor*bSize> tmp;
+#pragma unroll
+        for (int j = 0; j < ncolor; j++) {
+#pragma unroll
+          for (int i = 0; i < ncolor; i++) {
+#pragma unroll
+            for (int b = 0; b < bSize; b++ ) {//bSize = 1
+              tmp[(j*ncolor+i)*bSize+b] = this->field_accessor(x[Idxs]..., j, i, d, parity);
+            }
+          }
+        } return tmp; } ();
+        
       return LinkTp(link);
     }
-
+    
     template<FieldType field_type = F::type()>
     requires (field_type == FieldType::VectorFieldType)
     inline decltype(auto) operator()(const RangesTp auto &x, const int &d, const int &p) const {
@@ -80,12 +102,14 @@ class FieldAccessor {
     }
 
     template<std::size_t... Idxs, FieldType field_type = F::type()>
-    requires (field_type == FieldType::SpinorFieldType)
-    inline data_tp& store_spinor_component(std::index_sequence<Idxs...>, const RangesTp auto& x, const int s) {
-      return this->field_accessor(x[Idxs]..., s);
+    requires (field_type == FieldType::StaggeredSpinorFieldType)
+    inline data_tp& store_staggered_spinor_component(std::index_sequence<Idxs...>, const RangesTp auto& x, const int c) {
+      return this->field_accessor(x[Idxs]..., c);
     }
 
-    inline data_tp& operator()(const RangesTp auto &x, const int &s) { return store_spinor_component(Indices{}, x, s); }
+    template<FieldType field_type = F::type()>
+    requires (field_type == FieldType::StaggeredSpinorFieldType)
+    inline data_tp& operator()(const RangesTp auto &x, const int &c) { return store_staggered_spinor_component(Indices{}, x, c); }
              
 };
 
