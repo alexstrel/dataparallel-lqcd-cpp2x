@@ -270,8 +270,13 @@ class Field{
            
       using dyn_indx_type = std::size_t;
     
-      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, stdex::dynamic_extent, std::dynamic_extent, dofs...>>;
-      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>;
+      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, 
+                                                                     stdex::dynamic_extent, 
+                                                                     stdex::dynamic_extent,
+                                                                     stdex::dynamic_extent,
+                                                                     stdex::dynamic_extent, 
+                                                                     dofs...>>;
+      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>;
       
       const std::array X = GetCBDims();       
       
@@ -317,8 +322,8 @@ class Field{
            
       using dyn_indx_type = std::size_t;
 
-      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, stdex::dynamic_extent, dofs...>>;
-      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, dofs...>;
+      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>>;
+      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>;
           
       const auto X = GetCommDims(comm_dir); 
       

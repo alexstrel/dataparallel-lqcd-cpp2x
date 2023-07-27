@@ -56,20 +56,19 @@ class Dslash{
       return get_cartesian_coords(std::make_index_sequence<ArgTp::nDim>{}, x);
     }       
 
-    template<bool dagger>
-    inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, std::array<int, ArgTp::nDim> site_coords){
+    inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 
       using Spinor = typename std::remove_cvref_t<decltype(in)>::SpinorTp;
+      
+      const int mask = (X[1]*X[2]*X[3]) & 1;
 	      	      
-      const int parity_bit = parity == FieldParity::EvenFieldParity ? (site_coords[1] & 1) : 1 - (site_coords[1] & 1);
+      const int parity_bit = parity == FieldParity::EvenFieldParity ? mask : 1 - mask;
       //
       const int my_parity    = parity == FieldParity::EvenFieldParity ? 0 : 1;
       const int other_parity = 1 - my_parity;
       
       Spinor res; 
-      // 
-      auto X = site_coords | std::views::all;
       //      	 	      
 #pragma unroll
       for (int d = 0; d < ArgTp::nDir; d++) {
@@ -176,7 +175,6 @@ class Dslash{
       return res;
     }     
  
-    template <bool dagger>   
     void apply(GenericSpinorFieldViewTp auto &out_spinor,
                const GenericSpinorFieldViewTp auto &in_spinor,
                const GenericSpinorFieldViewTp auto &aux_spinor,
@@ -199,20 +197,19 @@ class Dslash{
         const auto in    = FieldAccessor<S, is_constant>{in_spinor[i]};
         const auto aux   = FieldAccessor<S, is_constant>{aux_spinor[i]};        
         //
-        auto res = compute_parity_site_stencil<dagger>(in, parity, X);
+        auto res = compute_parity_site_stencil(in, parity, X_view);
         //
-        const auto aux_  = aux(X);
+        const auto aux_  = aux(X_view);
         //
         post_transformer(aux_, res);
         //
 #pragma unroll
-        for (int c = 0; c < S::Nspin(); c++){
-          out(X_view,s) = res(s);//FIXME : works only for bSize = 1
+        for (int c = 0; c < S::Ncolor(); c++){
+          out(X_view,c) = res(c);//FIXME : works only for bSize = 1
         }        
       }//end of for loop
     }    
 
-    template <bool dagger>   
     void apply(GenericSpinorFieldViewTp auto &out_spinor,
                const GenericSpinorFieldViewTp auto &in_spinor,
                const auto cartesian_ids,
@@ -232,16 +229,14 @@ class Dslash{
         auto out         = FieldAccessor<S>{out_spinor[i]};
         const auto in    = FieldAccessor<S, is_constant>{in_spinor[i]};
         //
-        auto res = compute_parity_site_stencil<dagger>(in, parity, X);
+        auto res = compute_parity_site_stencil(in, parity, X_view);
     
 #pragma unroll
         for (int c = 0; c < S::Ncolor(); c++){
-          out(X_view,s) = res(s);//FIXME : works only for bSize = 1
+          out(X_view,c) = res(c);//FIXME : works only for bSize = 1
         }
       }//end of for loop
-    }    
-
-    
+    }       
 };
 
 

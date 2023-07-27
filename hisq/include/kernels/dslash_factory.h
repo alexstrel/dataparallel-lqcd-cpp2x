@@ -28,12 +28,11 @@ class DslashTransform{
     
     KernelArgs& ExportKernelArgs() const { return dslash_kernel_ptr->args; }
     
-    template<bool dagger>
     inline void launch_dslash(GenericSpinorFieldViewTp auto &out_view, const GenericSpinorFieldViewTp auto &in_view, const GenericSpinorFieldViewTp auto &aux_view, auto&& post_transformer, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
-                            dslash_kernel.template apply<dagger>(out_view, in_view, aux_view, post_transformer, coords, parity); 
+                            dslash_kernel.template apply(out_view, in_view, aux_view, post_transformer, coords, parity); 
                           };
       //
       std::for_each(std::execution::par_unseq,
@@ -42,12 +41,11 @@ class DslashTransform{
                     DslashKernel);    
     } 
     
-    template<bool dagger>
     inline void launch_dslash(GenericSpinorFieldViewTp auto &out_view, const GenericSpinorFieldViewTp auto &in_view, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
-                            dslash_kernel.template apply<dagger>(out_view, in_view, coords, parity); 
+                            dslash_kernel.template apply(out_view, in_view, coords, parity); 
                           };
       //
       std::for_each(std::execution::par_unseq,
@@ -56,7 +54,7 @@ class DslashTransform{
                     DslashKernel);    
     }    
  
-    void operator()(GenericSpinorFieldTp auto &out, const GenericSpinorFieldTp auto &in, const GenericSpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity, const bool dagger = false){
+    void operator()(GenericSpinorFieldTp auto &out, const GenericSpinorFieldTp auto &in, const GenericSpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
       
       if ( in.GetFieldOrder() != FieldOrder::EOFieldOrder and in.GetFieldSubset() != FieldSiteSubset::ParitySiteSubset ) { 
         std::cerr << "Only parity field is allowed." << std::endl; 
@@ -81,21 +79,13 @@ class DslashTransform{
         const auto&& in_view  = in.View();
         const auto&& aux_view = aux.View();         
         
-        if (dagger) {
-          launch_dslash<true>(out_view, in_view, aux_view, post_transformer, parity, ids);
-        } else {
-          launch_dslash<false>(out_view, in_view, aux_view, post_transformer, parity, ids);
-        }      
+        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);
       } else {
-        if (dagger) {
-          launch_dslash<true>(out, in, aux, post_transformer, parity, ids);  
-        } else {
-          launch_dslash<false>(out, in, aux, post_transformer, parity, ids);
-        }
+        launch_dslash(out, in, aux, post_transformer, parity, ids);  
       }       
     }
     
-    void operator()(GenericBlockSpinorFieldTp auto &out_block_spinor, GenericBlockSpinorFieldTp auto &in_block_spinor, GenericBlockSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity, const bool dagger = false){ 
+    void operator()(GenericBlockSpinorFieldTp auto &out_block_spinor, GenericBlockSpinorFieldTp auto &in_block_spinor, GenericBlockSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
       //   
       assert(in_block_spinor.GetFieldOrder() == FieldOrder::EOFieldOrder and in_block_spinor.GetFieldSubset() == FieldSiteSubset::ParitySiteSubset);
       
@@ -116,27 +106,19 @@ class DslashTransform{
         //First, we need to convert to views all components in the block
         auto &&out_block_spinor_view    = out_block_spinor.ConvertToView();
         auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       
-        auto &&aux_block_spinor_view  = aux_block_spinor.ConvertToView();               
+        auto &&aux_block_spinor_view    = aux_block_spinor.ConvertToView();               
 
         auto &&out_view    = out_block_spinor_view.BlockView();
         auto &&in_view     = in_block_spinor_view.BlockView(); 
-        auto &&aux_view  = aux_block_spinor_view.BlockView();         
+        auto &&aux_view    = aux_block_spinor_view.BlockView();         
         
-        if (dagger) {
-          launch_dslash<true>(out_view, in_view, aux_view, post_transformer, parity, ids);  
-        } else {
-          launch_dslash<false>(out_view, in_view, aux_view, post_transformer, parity, ids);
-        }  
+        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);  
       } else {
         auto &&out_view    = out_block_spinor.BlockView();
         auto &&in_view     = in_block_spinor.BlockView(); 
         auto &&aux_view  = aux_block_spinor.BlockView();         
       
-        if (dagger) {
-          launch_dslash<true>(out_view, in_view, aux_view, post_transformer, parity, ids);  
-        } else {
-          launch_dslash<false>(out_view, in_view, aux_view, post_transformer, parity, ids);
-        }     
+        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);  
       }                    
     }    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -149,12 +131,9 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     
     const FieldParity parity;
  
-    bool base_dagger;    
   public:
 
-    Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity, const bool dagger = false) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity), base_dagger(dagger) {}
-    
-    inline void flip() { base_dagger = not base_dagger; }
+    Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity, const bool dagger = false) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
 
     void operator()(SpinorField auto &out, const SpinorField auto &in, const SpinorField auto &aux){
       // Check all arguments!
@@ -185,7 +164,7 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
         }
       };      
       //
-      DslashTransform<KernelArgs, Kernel>::operator()(out, in,  aux, transformer, parity, base_dagger);
+      DslashTransform<KernelArgs, Kernel>::operator()(out, in,  aux, transformer, parity);
     }
     
     void operator()(SpinorField auto &out, SpinorField auto &in){//FIXME: in argument must be constant
@@ -232,11 +211,11 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
         }; 
 
         //
-        DslashTransform<KernelArgs, Kernel>::operator()(even_tmp, odd_in,  even_in, transformer, FieldParity::EvenFieldParity, base_dagger);
-        DslashTransform<KernelArgs, Kernel>::operator()(odd_tmp,  even_in, odd_in,  transformer, FieldParity::OddFieldParity, base_dagger);      
+        DslashTransform<KernelArgs, Kernel>::operator()(even_tmp, odd_in,  even_in, transformer, FieldParity::EvenFieldParity);
+        DslashTransform<KernelArgs, Kernel>::operator()(odd_tmp,  even_in, odd_in,  transformer, FieldParity::OddFieldParity);      
         
-        DslashTransform<KernelArgs, Kernel>::operator()(even_out, odd_tmp,  even_tmp, transformer, FieldParity::EvenFieldParity, base_dagger);
-        DslashTransform<KernelArgs, Kernel>::operator()(odd_out,  even_tmp, odd_tmp,  transformer, FieldParity::OddFieldParity, base_dagger);      
+        DslashTransform<KernelArgs, Kernel>::operator()(even_out, odd_tmp,  even_tmp, transformer, FieldParity::EvenFieldParity);
+        DslashTransform<KernelArgs, Kernel>::operator()(odd_out,  even_tmp, odd_tmp,  transformer, FieldParity::OddFieldParity);      
       } else {            
         auto transformer = [=](const auto &x, auto &y) {
           //
@@ -252,8 +231,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
           }
         }; 
         //
-        DslashTransform<KernelArgs, Kernel>::operator()(even_out, odd_in,  even_in, transformer, FieldParity::EvenFieldParity, base_dagger);
-        DslashTransform<KernelArgs, Kernel>::operator()(odd_out,  even_in, odd_in,  transformer, FieldParity::OddFieldParity, base_dagger);       
+        DslashTransform<KernelArgs, Kernel>::operator()(even_out, odd_in,  even_in, transformer, FieldParity::EvenFieldParity);
+        DslashTransform<KernelArgs, Kernel>::operator()(odd_out,  even_in, odd_in,  transformer, FieldParity::OddFieldParity);       
       }
     }    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -273,8 +252,6 @@ class PreconMat : public DslashTransform<KernelArgs, Kernel> {
     ParitySpinor tmp2;
     
     const FieldParity parity;
- 
-    bool base_dagger; 
        
   public:
     PreconMat(const KernelArgs &args, const TransformParams &param, const SpinorArg &arg,  const FieldParity parity = FieldParity::InvalidFieldParity, const bool dagger = false) : 
@@ -282,13 +259,9 @@ class PreconMat : public DslashTransform<KernelArgs, Kernel> {
                                             param(param), 
                                             tmp{create_field<container_tp, SpinorArg>(arg)},
                                             tmp2{create_field<container_tp, SpinorArg>(arg)},
-                                            parity(parity), 
-                                            base_dagger(dagger) { 
+                                            parity(parity){ 
                                               assert(tmp.GetFieldSubset() == FieldSiteSubset::ParitySiteSubset);
                                             }
-   
-    
-    inline void flip() { base_dagger = not base_dagger; }
 
     void operator()(GenericSpinorFieldTp auto &out, GenericSpinorFieldTp auto &in){//FIXME: in argument must be constant
       // Check all arguments!
@@ -331,24 +304,17 @@ class PreconMat : public DslashTransform<KernelArgs, Kernel> {
           auto &&in_view   = in.View();
           auto &&out_view  = out.View(); 
  
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,   in_view,  parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp2_View,  tmp_view, in_view,  transformer, other_parity, base_dagger);
-
-          flip();
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  tmp2_view, parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(out_view,  tmp_view, tmp2_view,  transformer, other_parity, base_dagger);
-          flip();
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,   in_view,  parity);
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp2_View,  tmp_view, in_view,  transformer, other_parity);
         } else {
           auto &&tmp_view  = tmp.View();
           auto &&tmp2_view = tmp2.View();
 
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,   in, parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp2_view,  tmp_view, in,  transformer, other_parity, base_dagger);
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,   in, parity);
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp2_view,  tmp_view, in,  transformer, other_parity);
 
-          flip();
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  tmp2_view, parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(out,  tmp_view, tmp2_view,  transformer, other_parity, base_dagger);
-          flip();
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  tmp2_view, parity);
+          DslashTransform<KernelArgs, Kernel>::operator()(out,  tmp_view, tmp2_view,  transformer, other_parity);
         }
       } else {
         if constexpr (is_allocator_aware_type<T> or is_pmr_allocator_aware_type<T>) {
@@ -357,14 +323,14 @@ class PreconMat : public DslashTransform<KernelArgs, Kernel> {
           auto &&in_view   = in.View();
           auto &&out_view  = out.View();
 
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  in_view, parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(out_view,  tmp_view, in_view,  transformer, other_parity, base_dagger);
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  in_view, parity);
+          DslashTransform<KernelArgs, Kernel>::operator()(out_view,  tmp_view, in_view,  transformer, other_parity);
 
         } else {
           auto &&tmp_view  = tmp.View();
 
-          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  in, parity, base_dagger);
-          DslashTransform<KernelArgs, Kernel>::operator()(out,  tmp_view, in,  transformer, other_parity, base_dagger);
+          DslashTransform<KernelArgs, Kernel>::operator()(tmp_view,  in, parity);
+          DslashTransform<KernelArgs, Kernel>::operator()(out,  tmp_view, in,  transformer, other_parity);
         }
       }
     }    
