@@ -13,7 +13,7 @@ decltype(auto) create_field(const Arg &arg) {
   return Field<alloc_container_tp, Arg>(arg);
 }
 
-template <PMRSpinorFieldTp field_tp, PMRContainerTp dst_container_tp = field_tp::container_tp, bool do_copy = false, bool is_exclusive = true>
+template <PMRStaggeredSpinorFieldTp field_tp, PMRContainerTp dst_container_tp = field_tp::container_tp, bool do_copy = false, bool is_exclusive = true>
 decltype(auto) create_field_with_buffer(field_tp &src) {
   //
   using src_container_tp = field_tp::container_tp;
@@ -109,7 +109,7 @@ class Field{
     static consteval std::size_t Nspin()   { return Arg::nspin;   }                        
     static consteval std::size_t Ncolor()  { return Arg::ncolor;  }    
     static consteval std::size_t Nparity() { return Arg::nparity; }                         
-    static consteval std::size_t Type()    { return Arg::type;    }                             
+    static consteval FieldType   Type()    { return Arg::type;    }                             
 
   private: 
     const Arg arg;//copy of the arguments  
@@ -145,7 +145,7 @@ class Field{
     template <PMRContainerTp pmr_container_tp, typename ArgTp, bool is_exclusive>
     friend decltype(auto) create_field_with_buffer(const ArgTp &arg_, const bool use_reserved);
     
-    template <PMRSpinorFieldTp field_tp, PMRContainerTp container_tp, bool do_copy>
+    template <PMRStaggeredSpinorFieldTp field_tp, PMRContainerTp container_tp, bool do_copy>
     friend decltype(auto) create_field_with_buffer(field_tp &src);    
 
   public:
@@ -316,6 +316,7 @@ class Field{
       }
     }    
 //??
+#if 0
     template<bool is_constant, std::size_t... dofs>
     inline decltype(auto) ghost_mdaccessor(std::array<std::size_t, (Ndim()-1) + sizeof...(dofs)> strides, const int comm_dir) const {    
       constexpr int nFace         = Arg::nFace();     
@@ -337,11 +338,12 @@ class Field{
                    const_cast<data_tp*>(ghost.data() + offset), DynMDMap{ExtentsMD{X}, strides}};
       }                  
     }      
-    
+#endif    
     //Direct field accessors (note that ncolor always 1, so no slicing for this dof):
     template<bool is_constant = false>    
     auto GhostAccessor(const int comm_dir) const {
       //
+#if 0      
       constexpr std::size_t nDim  = Ndim() - 1;//only one direction            
       
       constexpr std::size_t nSpin = Nspin();      
@@ -363,7 +365,10 @@ class Field{
         } else {
           return ghost_mdaccessor<is_constant, nSpin, nParity, nFace>(stridesMD, comm_dir);               
         }        
-      }      
+      }
+#else
+      return nullptr;
+#endif            
     }    
     
 };

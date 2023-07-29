@@ -2,7 +2,7 @@
 #include <optional>
 #include <typeinfo>
 //
-#include <kernels/dslash.h>
+#include <kernels/staggered_dslash.h>
 #include <core/cartesian_product.hpp>
 //
 #include <fields/field.h>
@@ -11,7 +11,7 @@
 #include <typeinfo>
 
 // Custom concept for both single and block spinors:
-template<typename T> concept SpinorField = GenericSpinorFieldTp<T> or GenericBlockSpinorFieldTp<T>;
+template<typename T> concept SpinorField = GenericStaggeredSpinorFieldTp<T> or GenericBlockStaggeredSpinorFieldTp<T>;
 
 //DslashTransform
 template<typename KernelArgs, template <typename Args> class Kernel>
@@ -28,7 +28,7 @@ class DslashTransform{
     
     KernelArgs& ExportKernelArgs() const { return dslash_kernel_ptr->args; }
     
-    inline void launch_dslash(GenericSpinorFieldViewTp auto &out_view, const GenericSpinorFieldViewTp auto &in_view, const GenericSpinorFieldViewTp auto &aux_view, auto&& post_transformer, const FieldParity parity, const auto ids) {
+    inline void launch_dslash(GenericStaggeredSpinorFieldViewTp auto &out_view, const GenericStaggeredSpinorFieldViewTp auto &in_view, const GenericStaggeredSpinorFieldViewTp auto &aux_view, auto&& post_transformer, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
@@ -41,7 +41,7 @@ class DslashTransform{
                     DslashKernel);    
     } 
     
-    inline void launch_dslash(GenericSpinorFieldViewTp auto &out_view, const GenericSpinorFieldViewTp auto &in_view, const FieldParity parity, const auto ids) {
+    inline void launch_dslash(GenericStaggeredSpinorFieldViewTp auto &out_view, const GenericStaggeredSpinorFieldViewTp auto &in_view, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
@@ -54,7 +54,7 @@ class DslashTransform{
                     DslashKernel);    
     }    
  
-    void operator()(GenericSpinorFieldTp auto &out, const GenericSpinorFieldTp auto &in, const GenericSpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
+    void operator()(GenericStaggeredSpinorFieldTp auto &out, const GenericStaggeredSpinorFieldTp auto &in, const GenericStaggeredSpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
       
       if ( in.GetFieldOrder() != FieldOrder::EOFieldOrder and in.GetFieldSubset() != FieldSiteSubset::ParitySiteSubset ) { 
         std::cerr << "Only parity field is allowed." << std::endl; 
@@ -85,7 +85,7 @@ class DslashTransform{
       }       
     }
     
-    void operator()(GenericBlockSpinorFieldTp auto &out_block_spinor, GenericBlockSpinorFieldTp auto &in_block_spinor, GenericBlockSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
+    void operator()(GenericBlockStaggeredSpinorFieldTp auto &out_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &in_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
       //   
       assert(in_block_spinor.GetFieldOrder() == FieldOrder::EOFieldOrder and in_block_spinor.GetFieldSubset() == FieldSiteSubset::ParitySiteSubset);
       
@@ -182,7 +182,7 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
       //
       constexpr int bsize  = DslashTransform<KernelArgs, Kernel>::bSize;      
 
-      const auto const1 = static_cast<DslashTransform<KernelArgs, Kernel>::kernel_data_tp>(param.M + 2.0*param.r);
+      const auto const1 = static_cast<DslashTransform<KernelArgs, Kernel>::kernel_data_tp>(param.M);
       const auto const2 = static_cast<DslashTransform<KernelArgs, Kernel>::kernel_data_tp>(0.5);                
       
       auto [even_in,   odd_in] = in.EODecompose();

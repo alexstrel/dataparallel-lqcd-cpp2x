@@ -2,10 +2,10 @@
 
 #include <memory_resource>
 
-template<GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive>
+template<GenericStaggeredSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive>
 class BlockSpinor; // forward declare to make function definition possible
 
-template <GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive = true>
+template <GenericStaggeredSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive = true>
 decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offset for block spinor
 
   using container_tp  = spinor_tp::container_tp;
@@ -28,7 +28,7 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   }
 }
 
-template<GenericSpinorFieldTp spinor_t, typename SpinorArg, bool is_exclusive = true>
+template<GenericStaggeredSpinorFieldTp spinor_t, typename SpinorArg, bool is_exclusive = true>
 class BlockSpinor{
   public:	
     using block_container_tp = std::vector<spinor_t> ;
@@ -41,7 +41,7 @@ class BlockSpinor{
 
     SpinorArg args;
 
-    template<SpinorFieldTp T = spinor_t>
+    template<StaggeredSpinorFieldTp T = spinor_t>
     BlockSpinor(const SpinorArg &args, const std::size_t n) : args(args) {
       v.reserve(n);
      
@@ -50,7 +50,7 @@ class BlockSpinor{
       }
     }
     
-    template<PMRSpinorFieldTp T = spinor_t>
+    template<PMRStaggeredSpinorFieldTp T = spinor_t>
     BlockSpinor(const SpinorArg &args_, const std::size_t n, const bool is_reserved) : args(args_) {
       using data_tp = container_tp::value_type;;
 
@@ -63,7 +63,7 @@ class BlockSpinor{
       args.UpdatedReservedPMR();//now locked
     }
 
-    template <SpinorFieldViewTp T = spinor_t>    
+    template <StaggeredSpinorFieldViewTp T = spinor_t>    
     BlockSpinor(const SpinorArg &args_, const std::size_t n) : args(args_) { v.reserve(n); }    
 
     decltype(auto) ConvertToView() {

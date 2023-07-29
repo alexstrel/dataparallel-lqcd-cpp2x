@@ -37,13 +37,13 @@ class StaggeredDslashArgs {
 
 
 template <typename Arg>
-class Dslash{
+class StaggeredDslash{
   public:
     using ArgTp  = typename std::remove_cvref_t<Arg>;
 
     const Arg &args;
 
-    Dslash(const Arg &args) : args(args) {}  
+    StaggeredDslash(const Arg &args) : args(args) {}  
     
     /** Convert tuple into std::array in the inverse order:
     */
@@ -175,11 +175,11 @@ class Dslash{
       return res;
     }     
  
-    void apply(GenericSpinorFieldViewTp auto &out_spinor,
-               const GenericSpinorFieldViewTp auto &in_spinor,
-               const GenericSpinorFieldViewTp auto &aux_spinor,
+    void apply(GenericStaggeredSpinorFieldViewTp auto &out_spinor,
+               const GenericStaggeredSpinorFieldViewTp auto &in_spinor,
+               const GenericStaggeredSpinorFieldViewTp auto &aux_spinor,
                auto &&post_transformer,               
-               const auto cartesian_ids,
+               const auto cartesian_idx,
                const FieldParity parity) {	    
       // Dslash_nm = (M + 2r) \delta_nm - 0.5 * \sum_\mu  ((r - \gamma_\mu)*U_(x){\mu}*\delta_{m,n+\mu} + (r + \gamma_\mu)U^*(x-mu)_{\mu}\delta_{m,n-\mu})
       //
@@ -210,9 +210,9 @@ class Dslash{
       }//end of for loop
     }    
 
-    void apply(GenericSpinorFieldViewTp auto &out_spinor,
-               const GenericSpinorFieldViewTp auto &in_spinor,
-               const auto cartesian_ids,
+    void apply(GenericStaggeredSpinorFieldViewTp auto &out_spinor,
+               const GenericStaggeredSpinorFieldViewTp auto &in_spinor,
+               const auto cartesian_idx,
                const FieldParity parity) {	    
       // Dslash_nm = \sum_\mu  ((r - \gamma_\mu)*U_(x){\mu}*\delta_{m,n+\mu} + (r + \gamma_\mu)U^*(x-mu)_{\mu}\delta_{m,n-\mu})
       //
