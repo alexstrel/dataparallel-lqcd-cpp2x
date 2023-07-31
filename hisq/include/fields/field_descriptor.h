@@ -91,16 +91,16 @@ class FieldDescriptor {
 
                         if constexpr (nparity == 2) {
                           if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+0] =  strides[4]*ncolor;                                                  
-                            strides[ndim+1] =  strides[5]*ncolor; 
-                            strides[ndim+2] =  strides[6]*ndir;                             
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
+                            strides[ndim+2] =  strides[ndim+1]*ncolor; 
+                            strides[ndim+3] =  strides[ndim+2]*ndir;                             
                           } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
-                            strides[ndim+0] =  strides[4]*ncolor;                                                                            
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                                            
                           }
                         } else if constexpr (nparity == 1) {
                           if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+0] =  strides[4]*ncolor;                                                  
-                            strides[ndim+1] =  strides[5]*ncolor;                                                                              
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
+                            strides[ndim+2] =  strides[ndim+1]*ncolor;                                                                              
                           }
                         } 
                         return strides;
@@ -124,16 +124,16 @@ class FieldDescriptor {
 
                         if constexpr (nparity == 2) {
                           if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+0] =  strides[4]*ncolor;                                                  
-                            strides[ndim+1] =  strides[5]*ncolor; 
-                            strides[ndim+2] =  strides[6]*ndir;                             
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
+                            strides[ndim+2] =  strides[ndim+1]*ncolor; 
+                            strides[ndim+3] =  strides[ndim+2]*ndir;                               
                           } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
-                            strides[ndim+0] =  strides[4]*ncolor;                                                                            
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                                            
                           }
                         } else if constexpr (nparity == 1) {
                           if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+0] =  strides[4]*ncolor;                                                  
-                            strides[ndim+1] =  strides[5]*ncolor;                                                                              
+                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
+                            strides[ndim+2] =  strides[ndim+1]*ncolor;                                                                              
                           }
                         } 
                         return strides;

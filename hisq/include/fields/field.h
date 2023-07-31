@@ -294,7 +294,7 @@ class Field{
     auto Accessor() const {
       //
       constexpr std::size_t nDir   = Ndir();
-      constexpr std::size_t nSpin  = Nspin();            
+      constexpr std::size_t nSpin  = Nspin();//NoP            
       constexpr std::size_t nColor = Ncolor();                  
       constexpr int nParity        = Nparity(); 
       //

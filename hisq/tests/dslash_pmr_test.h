@@ -25,14 +25,14 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
   auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
   init_su3(long_lnks);
- 
+
   // Create low precision gauge field (NOTE: by setting copy_gauge = true we migrate data on the device):  
   constexpr bool copy_gauge = true;
 
   auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
 
   auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);  
-  
+
   auto src_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(cs_param)>(cs_param);
   
   using cs_param_tp = decltype(src_spinor.ExportArg());
@@ -65,9 +65,10 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
   auto wall_start = std::chrono::high_resolution_clock::now(); 
   
   for(int i = 0; i < niter; i++) {
+
     mat(dst_spinor, src_spinor);    
   }
-  
+
   auto wall_stop = std::chrono::high_resolution_clock::now();
 
   auto wall_diff = wall_stop - wall_start;
@@ -110,6 +111,9 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
   long_lnks.destroy();
   sloppy_long_lnks.destroy();
   
+  fat_lnks.destroy();
+  sloppy_fat_lnks.destroy();  
+  
   src_spinor_v2.show();  
   
   dst_spinor_v2.destroy();
@@ -123,35 +127,43 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
 
 
 template<int N>
-void run_mrhs_pmr_dslash_test(auto params, const int X, const int T, const int niter) {
+void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter) {
   // 
-#if 0
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;
   // 
   constexpr bool do_warmup = false; 
   //
-  const auto cs_param = SpinorFieldArgs<nSpinorParity>{{X, T}, {0, 0}, FieldParity::InvalidFieldParity};
+  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{dims, {0, 0, 0, 0}, FieldParity::InvalidFieldParity};
   //
-  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{{X, T}, {0, 0}};
+  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims, {0, 0, 0, 0}};
   //
-  auto gauge = create_field<vector_tp, decltype(gauge_param)>(gauge_param);    
-  //  
-  init_u1(gauge);
+  auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  //
+  init_su3(fat_lnks);
+
+  auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  //
+  init_su3(long_lnks);
 
   constexpr bool copy_gauge = true;
      
-  auto sloppy_gauge = create_field<decltype(gauge), sloppy_vector_tp, copy_gauge>(gauge);
+  auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
+
+  auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);
   //
-  auto &&u_ref          = sloppy_gauge.View();
-  using sloppy_gauge_tp = decltype(sloppy_gauge.View());
+  // Setup dslash arguments:
+  auto &&fl_ref  = sloppy_fat_lnks.View();
+  auto &&ll_ref  = sloppy_long_lnks.View();
 
-  std::unique_ptr<DslashArgs<sloppy_gauge_tp, decltype(cs_param)::nspin>> dslash_args_ptr(new DslashArgs{u_ref});
+  using sloppy_gauge_tp = decltype(sloppy_fat_lnks.View());
 
-  auto &dslash_args = *dslash_args_ptr;
+  std::unique_ptr<StaggeredDslashArgs<sloppy_gauge_tp>> hisq_args_ptr(new StaggeredDslashArgs{fl_ref, ll_ref});
+
+  auto &hisq_args = *hisq_args_ptr;
 
   // Create dslash matrix
-  auto mat = Mat<decltype(dslash_args), Dslash, decltype(params)>{dslash_args, params};   
+  auto mat = Mat<decltype(hisq_args), StaggeredDslash, decltype(params)>{hisq_args, params};   
   //
   using sloppy_pmr_spinor_t  = Field<sloppy_pmr_vector_tp, decltype(cs_param)>;//
 
@@ -180,40 +192,17 @@ void run_mrhs_pmr_dslash_test(auto params, const int X, const int T, const int n
 
   std::cout << "Done for MRHS version (N =  " << N << ") : time per iteration is > " << wall_time << "sec." << std::endl;
 
-  constexpr bool do_check = false;
   
-  if constexpr (do_check) {
-    auto [even_chk_block, odd_chk_block] = chk_block_spinor.EODecompose();
-
-    for (int i = 0; i < chk_block_spinor.nComponents(); i++) {
-
-      DslashRef<float>(even_chk_block[i], src_block_spinor[i].Odd(), src_block_spinor[i].Even(), sloppy_gauge, params.M, params.r, even_chk_block[i].GetCBDims(), 0);   
-      DslashRef<float>(odd_chk_block[i],  src_block_spinor[i].Even(), src_block_spinor[i].Odd(),  sloppy_gauge, params.M, params.r, odd_chk_block[i].GetCBDims(), 1);
-
-      auto &&chk_e = even_chk_block[i].Accessor();
-      auto &&dst_e = dst_block_spinor[i].Even().Accessor();
-    
-      check_field(chk_e, dst_e, 1e-6);
-    
-      auto &&chk_o = odd_chk_block[i].Accessor();
-      auto &&dst_o = dst_block_spinor[i].Odd().Accessor();
-    
-      check_field(chk_o, dst_o, 1e-6);
-    }
-  }
-
   src_block_spinor[0].show();
   //
   src_block_spinor.destroy();
   dst_block_spinor.destroy();  
-  chk_block_spinor.destroy();
+
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
 
   auto src_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
-  auto chk_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
-
   auto dst_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
   
   wall_start = std::chrono::high_resolution_clock::now();
@@ -230,35 +219,17 @@ void run_mrhs_pmr_dslash_test(auto params, const int X, const int T, const int n
 
   std::cout << "Done for MRHS version (N =  " << N << ") : time per iteration is > " << wall_time << "sec." << std::endl;
 
-  {
-    auto [even_chk_block_v2, odd_chk_block_v2] = chk_block_spinor_v2.EODecompose();
-
-    for (int i = 0; i < chk_block_spinor_v2.nComponents(); i++) {
-
-      DslashRef<float>(even_chk_block_v2[i], src_block_spinor_v2[i].Odd(), src_block_spinor_v2[i].Even(), sloppy_gauge, params.M, params.r, even_chk_block_v2[i].GetCBDims(), 0);   
-      DslashRef<float>(odd_chk_block_v2[i],  src_block_spinor_v2[i].Even(), src_block_spinor_v2[i].Odd(),  sloppy_gauge, params.M, params.r, odd_chk_block_v2[i].GetCBDims(), 1);
-
-      auto &&chk_e = even_chk_block_v2[i].Accessor();
-      auto &&dst_e = dst_block_spinor_v2[i].Even().Accessor();
-    
-      check_field(chk_e, dst_e, 1e-6);
-    
-      auto &&chk_o = odd_chk_block_v2[i].Accessor();
-      auto &&dst_o = dst_block_spinor_v2[i].Odd().Accessor();
-    
-      check_field(chk_o, dst_o, 1e-6);
-    }
-  }
 
   src_block_spinor_v2[0].show();
 
   src_block_spinor_v2.destroy();
   dst_block_spinor_v2.destroy();
-  chk_block_spinor_v2.destroy();
 
-  gauge.destroy();  
-  sloppy_gauge.destroy();
-#endif
+  long_lnks.destroy();
+  sloppy_long_lnks.destroy();
+  
+  fat_lnks.destroy();
+  sloppy_fat_lnks.destroy(); 
 }
 
 

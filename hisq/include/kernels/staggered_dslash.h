@@ -56,6 +56,7 @@ class StaggeredDslash{
       return get_cartesian_coords(std::make_index_sequence<ArgTp::nDim>{}, x);
     }       
 
+    template<bool improved = false>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 
@@ -100,26 +101,26 @@ class StaggeredDslash{
           X[d] = Xd;	  
 	}
 	//  Improved fwd gather:
-	{ 
+        if constexpr (improved) { 
 	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
 
 	  if ( Xf >= (in.Extent(d) - 3) ) {
 	    //	
-            const Link U_  = args.U(X,d, my_parity);
+            const Link L_  = args.L(X,d, my_parity);
 
 	    X[d] = d == 0 ? (Xf - 2*in.Extent(d) + 3) / 2 : (Xf - in.Extent(d) + 3);
 
             const Spinor in_ = in(X);
 	    //
-            res += U_*in_;		                  
+            res += L_*in_;		                  
 	  } else {
-            const Link U_ = args.U(X,d, my_parity);
+            const Link L_ = args.L(X,d, my_parity);
 
 	    X[d] = X[d] + (d == 0 ? (3+parity_bit) / 2 : 3);
 
             const Spinor in_ = in(X);
 	    //		  
-            res += U_*in_;		  
+            res += L_*in_;		  
 	  }	  
           //
           X[d] = Xd;	  
@@ -147,29 +148,29 @@ class StaggeredDslash{
           X[d] = Xd;	            
 	}
 	// Bwd neighbour contribution:
-	{
+	if constexpr (improved) {
   	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
 	
           if ( Xf < 3 ) {
             //  
 	    X[d] = d == 0 ? (Xf + 2*in.Extent(d) - 3) / 2 : Xf + in.Extent(d) - 3;	  
 
-	    const Link U_    = args.U(X, d, other_parity);
+	    const Link L_    = args.L(X, d, other_parity);
 	    const Spinor in_ = in(X);
             //
-            res += conj(U_)*in_;              	    
+            res += conj(L_)*in_;              	    
           } else {  		
 	    
 	    X[d] = X[d] - (d == 0 ? (3 + (1 - parity_bit)) / 2 : 3);//?
 
-	    const Link U_    = args.U(X,d, other_parity);
+	    const Link L_    = args.L(X,d, other_parity);
 	    const Spinor in_ = in(X);
             //
-	    res += conj(U_)*in_;	 
+	    res += conj(L_)*in_;	 
 	  }
           //
           X[d] = Xd;	            
-	}	
+	}		
       }
 
       return res;

@@ -52,15 +52,18 @@ class FieldAccessor {
     template<std::size_t... Idxs, FieldType type = F::Type()>
     requires (type == FieldType::StaggeredSpinorFieldType)
     inline decltype(auto) load_parity_spinor(std::index_sequence<Idxs...>, const RangesTp auto& x) const {  
+    
+      using idx_type = decltype(x[0]);    
+    
       constexpr int ncolor = F::Ncolor();
 
-      auto spinor = [=]() {
+      auto spinor = [this, x=x]() {
         std::array<data_tp, ncolor*bSize> tmp;
 #pragma unroll
         for (int i = 0; i < ncolor; i++) {
 #pragma unroll
           for (int b = 0; b < bSize; b++ ) {//bSize = 1
-            tmp[i*bSize+b] = this->field_accessor(x[Idxs]..., i);
+            tmp[i*bSize+b] = this->field_accessor(x[Idxs]..., static_cast<idx_type>(i));
           }
         } return tmp; } ();    
 
@@ -77,9 +80,11 @@ class FieldAccessor {
     requires (field_type == FieldType::VectorFieldType)
     inline decltype(auto) load_parity_link(std::index_sequence<Idxs...>, const RangesTp auto& x, const int &d, const int &parity) const {
 
+      using idx_type = decltype(x[0]); 
+      
       constexpr int ncolor = F::Ncolor();
 
-      auto link = [=]() {
+      auto link = [this, x=x, d=d, p=parity]() {
         std::array<data_tp, ncolor*ncolor*bSize> tmp;
 #pragma unroll
         for (int j = 0; j < ncolor; j++) {
@@ -87,7 +92,7 @@ class FieldAccessor {
           for (int i = 0; i < ncolor; i++) {
 #pragma unroll
             for (int b = 0; b < bSize; b++ ) {//bSize = 1
-              tmp[(j*ncolor+i)*bSize+b] = this->field_accessor(x[Idxs]..., j, i, d, parity);
+              tmp[(j*ncolor+i)*bSize+b] = this->field_accessor(x[Idxs]...,  static_cast<idx_type>(j),  static_cast<idx_type>(i),  const_cast<idx_type>(d),  const_cast<idx_type>(p));
             }
           }
         } return tmp; } ();

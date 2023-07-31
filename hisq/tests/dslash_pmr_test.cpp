@@ -35,11 +35,10 @@ void print_range(field_tp &field, const int range){
 int main(int argc, char **argv)
 {
   //
-  constexpr int X = 2048;
-  constexpr int T = 2048;
+  constexpr int X = 8;
+  constexpr int T = 8;
 
   const Float mass = 0.05;
-  const Float r    = 1.0;
 
   DslashParam<Float> dslash_param{mass};
 
@@ -51,7 +50,7 @@ int main(int argc, char **argv)
   //
   constexpr int  N = 8;  
   //
-  //run_mrhs_pmr_dslash_test<N>(dslash_param, {X, X, X, T}, niter);
+  run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter);
 
   // initialize the data
   bool verbose = true;
