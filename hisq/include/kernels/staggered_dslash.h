@@ -56,7 +56,7 @@ class StaggeredDslash{
       return get_cartesian_coords(std::make_index_sequence<ArgTp::nDim>{}, x);
     }       
 
-    template<bool improved = false>
+    template<bool improved = true>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 
@@ -103,12 +103,13 @@ class StaggeredDslash{
 	//  Improved fwd gather:
         if constexpr (improved) { 
 	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
+          const int bndr = d==0 ? 2*in.Extent(d) : in.Extent(d);
 
-	  if ( Xf >= (in.Extent(d) - 3) ) {
+	  if ( Xf >= (bndr - 3) ) {
 	    //	
             const Link L_  = args.L(X,d, my_parity);
 
-	    X[d] = d == 0 ? (Xf - 2*in.Extent(d) + 3) / 2 : (Xf - in.Extent(d) + 3);
+	    X[d] = d == 0 ? (Xf - bndr + 3) / 2 : (Xf - bndr + 3);
 
             const Spinor in_ = in(X);
 	    //
@@ -150,7 +151,7 @@ class StaggeredDslash{
 	// Bwd neighbour contribution:
 	if constexpr (improved) {
   	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
-	
+         
           if ( Xf < 3 ) {
             //  
 	    X[d] = d == 0 ? (Xf + 2*in.Extent(d) - 3) / 2 : Xf + in.Extent(d) - 3;	  
