@@ -134,7 +134,7 @@ class StaggeredDslash{
 	    const Link U_    = args.U(X, d, other_parity);
 	    const Spinor in_ = in(X);
             //
-            res += conj(U_)*in_;              	    
+            res -= conj(U_)*in_;              	    
           } else {  		
 	    
 	    X[d] = X[d] - (d == 0 ? (1- parity_bit) : 1);
@@ -142,7 +142,7 @@ class StaggeredDslash{
 	    const Link U_    = args.U(X,d, other_parity);
 	    const Spinor in_ = in(X);
             //
-	    res += conj(U_)*in_;	 
+	    res -= conj(U_)*in_;	 
 	  }
           //
           X[d] = Xd;	            
@@ -158,7 +158,7 @@ class StaggeredDslash{
 	    const Link L_    = args.L(X, d, other_parity);
 	    const Spinor in_ = in(X);
             //
-            res += conj(L_)*in_;              	    
+            res -= conj(L_)*in_;              	    
           } else {  		
 	    
 	    X[d] = X[d] - (d == 0 ? (3 + (1 - parity_bit)) / 2 : 3);//?
@@ -166,7 +166,7 @@ class StaggeredDslash{
 	    const Link L_    = args.L(X,d, other_parity);
 	    const Spinor in_ = in(X);
             //
-	    res += conj(L_)*in_;	 
+	    res -= conj(L_)*in_;	 
 	  }
           //
           X[d] = Xd;	            
