@@ -56,7 +56,7 @@ class StaggeredDslash{
       return get_cartesian_coords(std::make_index_sequence<ArgTp::nDim>{}, x);
     }       
 
-    template<bool improved = true>
+    template<bool improved = false>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 

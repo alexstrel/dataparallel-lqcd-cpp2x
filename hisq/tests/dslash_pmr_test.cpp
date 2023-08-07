@@ -29,20 +29,43 @@ void print_range(field_tp &field, const int range){
    std::for_each(field.Data().begin(), field.Data().begin()+range, print);
 }
 
+void check_field(const auto &dst_field_accessor, const auto &src_field_accessor, const double tol){
+
+  const int mu = src_field_accessor.extent(4);
+  const int V  = src_field_accessor.extent(0) * src_field_accessor.extent(1)*src_field_accessor.extent(2) * src_field_accessor.extent(3); 
+  {
+    for(int i = 0; i < dst_field_accessor.extent(0); i++){
+      for(int j = 0; j < dst_field_accessor.extent(1); j++){
+        for(int k = 0; k < dst_field_accessor.extent(2); k++){      
+          for(int l = 0; l < dst_field_accessor.extent(3); l++){              
+#pragma unroll 
+            for(int s = 0; s < mu; s++){
+	      double diff_ = abs(dst_field_accessor(i,j,k,l,s) - src_field_accessor(i,j,k,l,s));     
+	      if(diff_ > tol) 
+	        std::cout << "Error found : diff = " << diff_ << " coords x=" << i << " y= " << j << " z= " << k << " t= " << l << "  check field " << dst_field_accessor(i,j,k,l,s).real() << " orig field " << src_field_accessor(i,j,k,l,s).real() << std::endl;
+	    }
+	  }
+        }	       
+      }
+    }
+  }
+  return;
+}
+
 #include <dslash_pmr_test.h>
 
 //--------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
   //
-  constexpr int X = 16;
-  constexpr int T = 16;
+  constexpr int X = 8;
+  constexpr int T = 8;
 
   const Float mass = 0.05;
 
   DslashParam<Float> dslash_param{mass};
 
-  const int niter = 1;
+  const int niter = 100000;
   
   std::array dims = {X, X, X, T};
   
