@@ -197,24 +197,22 @@ namespace impl{
         for (int s = 0; s < nSpin; s++) { //
           data_tp re;
           data_tp im;
+
 #pragma unroll        
           for (int b = 0; b < bSize; b++) {
 	    re  = A_(c,0,b).real() * x_(0, s, b).real();
 	    re -= A_(c,0,b).imag() * x_(0, s, b).imag();
 	    im  = A_(c,0,b).real() * x_(0, s, b).imag();
 	    im += A_(c,0,b).imag() * x_(0, s, b).real();
-	    y_(c,s,b)   = T{re, im};
-	  }
+
 #pragma unroll
-          for (int cc = 1; cc < nColor; cc++) {
-#pragma unroll        
-            for (int b = 0; b < bSize; b++) {
+            for (int cc = 1; cc < nColor; cc++) {
 	      re += A_(c,cc,b).real() * x_(cc, s, b).real();
 	      re -= A_(c,cc,b).imag() * x_(cc, s, b).imag();
 	      im += A_(c,cc,b).real() * x_(cc, s, b).imag();
 	      im += A_(c,cc,b).imag() * x_(cc, s, b).real();
-	      y_(c,s,b) += T{re, im};
-	    }	  
+            }
+            y_(c,s,b) = T{re, im};	  
 	  }	  
         }
       }
