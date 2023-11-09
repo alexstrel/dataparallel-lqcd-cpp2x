@@ -229,21 +229,31 @@ namespace impl{
   template <ComplexTp T, int Nc, int Ns, int bSize = 1>
   inline void caxpy(const T &a, const ColorSpinor<T, Nc, Ns, bSize> &x, ColorSpinor<T, Nc, Ns, bSize> &y)
   {
-    const auto x_ = x.flat_cview();      
+    using data_tp = T::value_type;
+
+    constexpr int nColor = ColorSpinor<T,Nc,Ns,bSize>::nColor;
+    constexpr int nSpin  = ColorSpinor<T,Nc,Ns,bSize>::nSpin;
+
+    constexpr int nSpinColor = nSpin*nColor;
+
+    const auto x_ = x.flat_cview();
     auto       y_ = y.flat_view();
-    //
 #pragma unroll
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < nSpinColor; i++) {
+      data_tp re;
+      data_tp im;
 #pragma unroll
-      for (int b = 0; b < bSize; b++) {    
-        y_(i,b).real( a.real() * x_(i,b).real() + y_(i,b).real());
-        y_(i,b).real(-a.imag() * x_(i,b).imag() + y_(i,b).real());
-        y_(i,b).imag( a.imag() * x_(i,b).real() + y_(i,b).imag());
-        y_(i,b).imag( a.real() * x_(i,b).imag() + y_(i,b).imag());
+      for (int b = 0; b < bSize; b++) {
+        re  =  a.real() * x_(i,b).real() + y_(i,b).real();
+        re += -a.imag() * x_(i,b).imag();
+        im  =  a.imag() * x_(i,b).real() + y_(i,b).imag();
+        im +=  a.real() * x_(i,b).imag();
+        y_(i,b) = T{re,im};
       }
     }
   }
-  
+
+
   /**
      @brief ColorSpinor addition operator
      @param[in] x Input vector
