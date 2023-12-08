@@ -65,14 +65,7 @@ class DslashTransform{
       using container_tp = spinor_tp::container_tp;
       
       //Setup exe domain
-      const auto [Nx, Ny, Nz, Nt] = out.GetCBDims(); //Get CB dimensions
-      
-      auto X = std::views::iota(0, Nx);
-      auto Y = std::views::iota(0, Ny);
-      auto Z = std::views::iota(0, Nz);
-      auto T = std::views::iota(0, Nt);      
-
-      auto ids = std::views::cartesian_product(T, Z, Y, X);//T is the slowest index, X is the fastest
+      auto ids = impl::cartesian_4d_view(out.GetCBDims());
 
       if constexpr (is_allocator_aware_type<container_tp> or is_pmr_allocator_aware_type<container_tp>) {
         auto&& out_view       = out.View();
@@ -92,17 +85,10 @@ class DslashTransform{
       using block_spinor_tp        = typename std::remove_cvref_t<decltype(in_block_spinor)>;
       using component_container_tp = block_spinor_tp::container_tp;      
       
-      //Setup exe domain
-      const auto [Nx, Ny, Nz, Nt] = out_block_spinor.GetCBDims(); //Get CB dimensions
-      
-      auto X = std::views::iota(0, Nx);
-      auto Y = std::views::iota(0, Ny);
-      auto Z = std::views::iota(0, Nz);
-      auto T = std::views::iota(0, Nt);      
+      //Setup exe domain :
+      auto ids = impl::cartesian_4d_view(out_block_spinor.GetCBDims());      
 
-      auto ids = std::views::cartesian_product(T, Z, Y, X);//T is the slowest index, X is the fastest
-
-     if constexpr (is_allocator_aware_type<component_container_tp> or is_pmr_allocator_aware_type<component_container_tp>) {
+      if constexpr (is_allocator_aware_type<component_container_tp> or is_pmr_allocator_aware_type<component_container_tp>) {
         //First, we need to convert to views all components in the block
         auto &&out_block_spinor_view    = out_block_spinor.ConvertToView();
         auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       

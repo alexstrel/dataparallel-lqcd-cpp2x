@@ -3,7 +3,8 @@
 #include <typeinfo>
 //
 #include <kernels/dslash.h>
-#include <core/cartesian_product.hpp>
+
+#include <core/index_helper.h>
 //
 #include <fields/field.h>
 #include <fields/field_accessor.h>
@@ -67,12 +68,7 @@ class DslashTransform{
       using container_tp = spinor_tp::container_tp;
       
       //Setup exe domain
-      const auto [Nx, Ny] = out.GetCBDims(); //Get CB dimensions
-      
-      auto X = std::views::iota(0, Nx);
-      auto Y = std::views::iota(0, Ny);
-
-      auto ids = std::views::cartesian_product(Y, X);//Y is the slowest index, X is the fastest
+      auto ids = impl::cartesian_2d_view(out.GetCBDims()); 
       
       if constexpr (is_allocator_aware_type<container_tp> or is_pmr_allocator_aware_type<container_tp>) {
         auto&& out_view       = out.View();
@@ -101,12 +97,7 @@ class DslashTransform{
       using component_container_tp = block_spinor_tp::container_tp;      
       
       // Take into account only internal points:
-      const auto [Nx, Ny] = in_block_spinor.GetCBDims(); //Get CB dimensions
-
-      auto X = std::views::iota(0, Nx);
-      auto Y = std::views::iota(0, Ny);
-
-      auto ids = std::views::cartesian_product(Y, X);//Y is the slowest index, X is the fastest
+      auto ids = impl::cartesian_2d_view(in_block_spinor.GetCBDims());
                     
      if constexpr (is_allocator_aware_type<component_container_tp> or is_pmr_allocator_aware_type<component_container_tp>) {
         //First, we need to convert to views all components in the block

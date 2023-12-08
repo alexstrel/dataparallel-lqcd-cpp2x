@@ -3,6 +3,7 @@
 #include <execution>
 //
 #include <core/cartesian_product.hpp>
+#include <core/index_helper.h>
 //
 #include <fields/field_accessor.h>
 
@@ -43,18 +44,7 @@ class StaggeredDslash{
 
     const Arg &args;
 
-    StaggeredDslash(const Arg &args) : args(args) {}  
-    
-    /** Convert tuple into std::array in the inverse order:
-    */
-    template<std::size_t... Id>
-    inline decltype(auto) get_cartesian_coords(std::index_sequence<Id...>, const auto& x) const {
-      return std::array<int, sizeof... (Id)>{{std::get<sizeof...(Id)-Id-1>(x)... }};
-    }
-
-    inline decltype(auto) convert_coords(const auto &x) const {
-      return get_cartesian_coords(std::make_index_sequence<ArgTp::nDim>{}, x);
-    }       
+    StaggeredDslash(const Arg &args) : args(args) {}        
 
     template<bool improved = false>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
@@ -189,7 +179,7 @@ class StaggeredDslash{
       //
       using S = typename std::remove_cvref_t<decltype(out_spinor[0])>;       
 
-      auto X  = convert_coords(cartesian_idx);
+      auto X  = impl::convert_coords<ArgTp::nDim>(cartesian_idx);
       //
       auto X_view = X | std::views::all;
 #pragma unroll
@@ -222,7 +212,7 @@ class StaggeredDslash{
       //
       using S = typename std::remove_cvref_t<decltype(out_spinor[0])>; 
 
-      auto X  = convert_coords(cartesian_idx);
+      auto X  = impl::convert_coords<ArgTp::nDim>(cartesian_idx);
       //
       auto X_view = X | std::views::all;
 #pragma unroll
