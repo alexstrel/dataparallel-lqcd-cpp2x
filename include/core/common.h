@@ -30,23 +30,15 @@ namespace stdex = std::experimental;
 
 // Extended floaitng point type:
 template <typename T>
-concept FloatTp = std::is_floating_point_v<T> and requires(T x, T y) {
-    { x + y } -> std::same_as<T>;
-    { x - y } -> std::same_as<T>;
-    { x * y } -> std::same_as<T>;
-    { x / y } -> std::same_as<T>;
-    { -x    } -> std::same_as<T>;
-    { +x    } -> std::same_as<T>;
-    //
-    { std::numeric_limits<T>::infinity()  } -> std::same_as<T>;
-    { std::numeric_limits<T>::quiet_NaN() } -> std::same_as<T>;
-};
+concept FloatTp = std::is_floating_point_v<T>;
 
 // Generic complex type:
 template <typename T>
 concept ComplexTp = requires {
     typename T::value_type;
+    
     requires FloatTp<typename T::value_type>;
+    
     { std::declval<T>().real() } -> std::convertible_to<typename T::value_type>;
     { std::declval<T>().imag() } -> std::convertible_to<typename T::value_type>;
 };
@@ -55,12 +47,14 @@ concept ComplexTp = requires {
 template <typename T>
 concept ArithmeticTp = FloatTp<T> or ComplexTp<T>;
 
-///////////////////////////////////////////////////////////////////////////
+// Generic (complex valued) container type (inlcudes both allacotar aware containers and views)
 template <typename T>
 concept GenericContainerTp = requires{
     typename T::value_type;
     typename T::size_type;
     typename T::iterator;
+    
+    requires ComplexTp<typename T::value_type>;
 
     { std::declval<T>().data()  }  -> std::same_as<typename T::value_type*>;
     { std::declval<T>().size()  }  -> std::same_as<typename T::size_type>;
