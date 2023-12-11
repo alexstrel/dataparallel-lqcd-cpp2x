@@ -247,8 +247,9 @@ class Field{
     
     auto GetFaceSize( const int i )  const { return arg.GetFaceSize(i); }    
    
-    auto GetFieldOrder()   const { return arg.order; } 
+    auto GetFieldOrder()   const { return arg.order;  } 
     auto GetFieldParity()  const { return arg.parity; } 
+    auto GetTBoundary()    const { return arg.bc;     }
 
     auto GetFieldSubset()  const { return arg.GetFieldSubset(); }  
 

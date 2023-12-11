@@ -44,3 +44,9 @@ enum class FieldOrder {
 };
 
 
+enum class FieldBoundary {
+  PeriodicBC     = +1,
+  AntiPeriodicBC = -1,
+  InvalidBC = min_int	  
+};
+

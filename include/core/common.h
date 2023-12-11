@@ -54,7 +54,7 @@ concept GenericContainerTp = requires{
     typename T::size_type;
     typename T::iterator;
     
-    requires ComplexTp<typename T::value_type>;
+    //requires ComplexTp<typename T::value_type>;//TODO : this does not work with block fields
 
     { std::declval<T>().data()  }  -> std::same_as<typename T::value_type*>;
     { std::declval<T>().size()  }  -> std::same_as<typename T::size_type>;

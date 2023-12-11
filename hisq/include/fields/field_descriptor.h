@@ -65,6 +65,7 @@ class FieldDescriptor {
 
     const FieldOrder         order  = FieldOrder::InvalidFieldOrder;        		
     const FieldParity        parity = FieldParity::InvalidFieldParity;//this is optional param
+    const FieldBoundary      bc     = FieldBoundary::InvalidBC;
 
     std::shared_ptr<PMRBuffer> pmr_buffer;
 
@@ -79,11 +80,13 @@ class FieldDescriptor {
     FieldDescriptor(const std::array<int, ndim> dir, 
                     const std::array<int, ndim> comm_dir,  
 	            const FieldParity     parity   = FieldParity::InvalidFieldParity,
-	            const FieldOrder      order    = FieldOrder::EOFieldOrder,	            
+	            const FieldOrder      order    = FieldOrder::EOFieldOrder,
+                    const FieldBoundary   bc       = FieldBoundary::InvalidBC,		    
 	            const bool is_exclusive        = true) : 
 	            dir{dir},
 	            order(order),
 	            parity(parity), 
+		    bc(bc),
                     pmr_buffer(nullptr), 
                     mdStrides([&d = dir]()->std::array<std::size_t, ndim+nExtra> {
                         const int d0 = nparity == 2 ? d[0] / 2 : d[0];
@@ -117,6 +120,7 @@ class FieldDescriptor {
                     dir(get_dims<std::remove_cvref_t<decltype(args)>::nparity>(args.dir)),
 	            order(args.order),
 	            parity(parity),
+		    bc(args.bc),
                     pmr_buffer(args.pmr_buffer), 
                     mdStrides([&d = this->dir]()->std::array<std::size_t, ndim+nExtra> {
                         const int d0 = nparity == 2 ? d[0] / 2 : d[0];
@@ -151,6 +155,7 @@ class FieldDescriptor {
                     dir(args.dir),
                     order(args.order),
                     parity(args.parity),
+		    bc(args.bc),
                     pmr_buffer(extern_pmr_buffer), 
                     mdStrides(args.mdStrides), 
                     ghost_descriptor(args.ghost_descriptor) { }
