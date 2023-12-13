@@ -3,8 +3,8 @@
 using vector_tp         = std::vector<std::complex<Float>>;
 using sloppy_vector_tp  = std::vector<std::complex<float>>;
 
-using pmr_vector_tp         = impl::pmr::vector<std::complex<Float>>;
-using sloppy_pmr_vector_tp  = impl::pmr::vector<std::complex<float>>;
+using pmr_vector_tp         = std::pmr::vector<std::complex<Float>>;
+using sloppy_pmr_vector_tp  = std::pmr::vector<std::complex<float>>;
 
 
 template<typename Float_, int nColors = 3>
@@ -87,7 +87,7 @@ void StaggeredDslashRef(auto &out_spinor, const auto &in_spinor, const auto &acc
 }
 
 
-void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
+void run_pmr_dslash_test(auto params, const auto dims, const int niter, const int test_type) {
   //
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;
@@ -101,11 +101,9 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
   // Create full precision gauge field:
   auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
-  init_su3(fat_lnks);
-
   auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
-  init_su3(long_lnks);
+  constructFatLongGaugeField<0, 1>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
 
   // Create low precision gauge field (NOTE: by setting copy_gauge = true we migrate data on the device):  
   constexpr bool copy_gauge = true;
@@ -227,7 +225,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter) {
 
 
 template<int N>
-void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter) {
+void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, const int test_type) {
   // 
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;
@@ -239,12 +237,10 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter) {
   const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims, {0, 0, 0, 0}};
   //
   auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
-  //
-  init_su3(fat_lnks);
 
   auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
-  //
-  init_su3(long_lnks);
+
+  constructFatLongGaugeField<0, 1>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
 
   constexpr bool copy_gauge = true;
      

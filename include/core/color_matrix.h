@@ -63,7 +63,26 @@ namespace impl{
 #pragma unroll
 	for (int i = 0; i < m.size(); i++) m[i] = b.m[i];
       }
-
+      
+      inline void zero() {
+#pragma unroll
+	for (int i = 0; i < m.size(); i++) m[i] = T{0., 0.};
+      } 
+      
+      inline void unit() {
+#pragma unroll
+	for (int i = 0; i < m.size(); i++) m[i] = T{0., 0.};
+	
+	auto m_view = View3D(m.data());
+	
+#pragma unroll	
+	for (int i = 0; i < Nc; i++) {
+#pragma unroll	
+	  for (int j = 0; j < bSize; j++) {
+	    m_view(i, i, j) = T{1., 0.}; 
+	  }
+	}	
+      }           
   };
 
 

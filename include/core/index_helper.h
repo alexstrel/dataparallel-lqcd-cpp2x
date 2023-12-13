@@ -34,7 +34,7 @@ namespace impl{
     return std::views::cartesian_product(T, Z, Y, X);//T is the slowest index, X is the fastest  
   }  
   
-  inline decltype(auto) restricted_cartesian_4d_view(const std::array<int, 4> &begin_x, const std::array<int, 4> &end_x){
+  inline decltype(auto) cartesian_4d_restricted_view(const std::array<int, 4> &begin_x, const std::array<int, 4> &end_x){
       
     auto X = std::views::iota(begin_x[0], end_x[0]);//excluded end_x
     auto Y = std::views::iota(begin_x[1], end_x[1]);

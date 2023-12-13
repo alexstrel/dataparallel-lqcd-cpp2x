@@ -2,24 +2,17 @@
 #include <fields/block_field.h>
 #include <kernels/dslash_factory.h>
 #include <core/memory.h> 
+#include <numbers>
+
+#include <utils/gauge_utils.h>
 
 //
 using Float = double;
-//
-std::random_device rd;  //Will be used to obtain a seed for the random number engine
-std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()s
-std::uniform_real_distribution<Float> dis(0.f, 1.f);
-
-void init_su3(auto &field){
-   for (auto &i : field.Data()) i = std::polar(static_cast<Float>(1.f),dis(gen));	
-}
 
 void init_spinor(auto &field){
    for (auto &i : field.Data()) i = dis(gen); //std::complex<Float>(1.f, 0.f);
 }
 
-
-//template<FieldTp field_tp>
 template<GenericStaggeredSpinorFieldTp field_tp>
 void print_range(field_tp &field, const int range){
    std::cout << "Print components for field : " << field.Data().data() << std::endl;
@@ -52,6 +45,7 @@ void check_field(const auto &dst_field_accessor, const auto &src_field_accessor,
   return;
 }
 
+//
 #include <dslash_pmr_test.h>
 
 //--------------------------------------------------------------------------------
@@ -65,15 +59,15 @@ int main(int argc, char **argv)
 
   DslashParam<Float> dslash_param{mass};
 
-  const int niter = 100000;
+  const int niter = 10;
   
   std::array dims = {X, X, X, T};
   
-  run_pmr_dslash_test(dslash_param, dims, niter);
+  run_pmr_dslash_test(dslash_param, dims, niter, 0);
   //
-  constexpr int  N = 8;  
+  constexpr int  N = 2;  
   //
-  //run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter);
+  run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter, 0);
 
   // initialize the data
   bool verbose = true;
