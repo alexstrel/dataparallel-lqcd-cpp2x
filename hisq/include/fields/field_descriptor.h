@@ -13,8 +13,6 @@
 #include <core/enums.h>
 #include <core/memory.h>
 
-#include <fields/ghost_descriptor.h>
-
 template<std::size_t nD, std::size_t nS, std::size_t nC>
 consteval FieldType get_field_type() {
 
@@ -56,10 +54,6 @@ class FieldDescriptor {
     //gauge  field extra dimensions: color + dirs[ + parity, if par = 2 ] 
     //spinor field extra dimensions: color [ + parity, if par = 2 ]     
     static constexpr int nExtra      = type == FieldType::VectorFieldType ? (nparity == 2 ? 4 : 3) : (nparity == 2 ? 2 : 1);       
-    
-    using ghost = GhostDescriptor<type, ndim, nspin, ncolor, nparity>;
-    
-    static constexpr int nFace() { return ghost::getNFace(); }    
 
     const std::array<int, ndim> dir;    
 
@@ -71,14 +65,11 @@ class FieldDescriptor {
 
     const std::array<std::size_t, ndim+nExtra> mdStrides;            //for mdspan views only
 
-    const ghost ghost_descriptor;
-
     FieldDescriptor()                        = default;
     FieldDescriptor(const FieldDescriptor& ) = default;
     FieldDescriptor(FieldDescriptor&& )      = default;
 
     FieldDescriptor(const std::array<int, ndim> dir, 
-                    const std::array<int, ndim> comm_dir,  
 	            const FieldParity     parity   = FieldParity::InvalidFieldParity,
 	            const FieldOrder      order    = FieldOrder::EOFieldOrder,
                     const FieldBoundary   bc       = FieldBoundary::InvalidBC,		    
@@ -107,12 +98,7 @@ class FieldDescriptor {
                           }
                         } 
                         return strides;
-                      }()),
-                   ghost_descriptor(dir, comm_dir) { 
-                      if (parity != FieldParity::InvalidFieldParity and nparity != 1) {
-                        std::cerr << "Incorrect number of parities " << std::endl;
-                        std::quick_exit( EXIT_FAILURE );
-                      }
+                      }()) {
                     } 
                     
     template<typename Args>
@@ -141,12 +127,7 @@ class FieldDescriptor {
                           }
                         } 
                         return strides;
-                      }()),
-                      ghost_descriptor(args.dir, parity) { 
-                      if (parity != FieldParity::InvalidFieldParity and nparity != 1) {
-                        std::cerr << "Incorrect number of parities " << std::endl;
-                        std::quick_exit( EXIT_FAILURE );
-                      }                    
+                      }()) {
                     } 
 
     //Use it for block fields only:
@@ -157,8 +138,7 @@ class FieldDescriptor {
                     parity(args.parity),
 		    bc(args.bc),
                     pmr_buffer(extern_pmr_buffer), 
-                    mdStrides(args.mdStrides), 
-                    ghost_descriptor(args.ghost_descriptor) { }
+                    mdStrides(args.mdStrides){ }
     
     decltype(auto) GetFieldSize() const {
       int vol = 1; 
@@ -178,10 +158,6 @@ class FieldDescriptor {
       return static_cast<std::size_t>(0);
     } 
 
-    decltype(auto) GetGhostZoneSize() const { return ghost_descriptor.GetGhostZoneSize(); }
-
-    auto GetFaceSize(const int i) const { return ghost_descriptor.GetFaceSize(i); }
-
     auto GetLatticeDims() const { return dir; }
 
     auto GetParityLatticeDims() const {
@@ -198,18 +174,13 @@ class FieldDescriptor {
     
     inline auto X() const { return dir; }    
     
-    inline int  GetCommDims(const int i) const { return ghost_descriptor.GetCommDims(i); }    
-    
-    inline auto GetCommDims()            const { return ghost_descriptor.GetCommDims(); }        
  
     inline auto& GetMDStrides()      const { return mdStrides; }
-
-    inline auto& GetGhostMDStrides() const { return ghost_descriptor.GetGhostMDStrides(); }     
   
     template<ArithmeticTp T, bool is_exclusive = true>
     void RegisterPMRBuffer(const bool is_reserved = false) {  
       // 
-      const std::size_t nbytes = (GetFieldSize()+GetGhostZoneSize())*sizeof(T);
+      const std::size_t nbytes = (GetFieldSize())*sizeof(T);
       //
       if (pmr_buffer != nullptr) pmr_buffer.reset(); 
       //
@@ -237,7 +208,7 @@ class FieldDescriptor {
     template<ArithmeticTp T>    
     bool IsReservedPMR() const {
       //
-      const std::size_t nbytes = (GetFieldSize()+GetGhostZoneSize())*sizeof(T);    
+      const std::size_t nbytes = (GetFieldSize())*sizeof(T);    
       //
       return pmr_buffer->IsReserved(nbytes);
     } 

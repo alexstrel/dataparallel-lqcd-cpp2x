@@ -9,6 +9,10 @@
 //
 using Float = double;
 
+void init_su3(auto &field){
+   for (auto &i : field.Data()) i = std::polar(static_cast<Float>(1.f),dis(gen));
+}
+
 void init_spinor(auto &field){
    for (auto &i : field.Data()) i = dis(gen); //std::complex<Float>(1.f, 0.f);
 }
@@ -52,20 +56,20 @@ void check_field(const auto &dst_field_accessor, const auto &src_field_accessor,
 int main(int argc, char **argv)
 {
   //
-  constexpr int X = 8;
-  constexpr int T = 8;
+  constexpr int X = 32;
+  constexpr int T = 32;
 
   const Float mass = 0.05;
 
   DslashParam<Float> dslash_param{mass};
 
-  const int niter = 10;
+  const int niter = 1;
   
   std::array dims = {X, X, X, T};
   
   run_pmr_dslash_test(dslash_param, dims, niter, 0);
   //
-  constexpr int  N = 2;  
+  constexpr int  N = 8;  
   //
   run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter, 0);
 

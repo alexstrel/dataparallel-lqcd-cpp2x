@@ -3,8 +3,8 @@
 using vector_tp         = std::vector<std::complex<Float>>;
 using sloppy_vector_tp  = std::vector<std::complex<float>>;
 
-using pmr_vector_tp         = std::pmr::vector<std::complex<Float>>;
-using sloppy_pmr_vector_tp  = std::pmr::vector<std::complex<float>>;
+using pmr_vector_tp         = impl::pmr::vector<std::complex<Float>>;
+using sloppy_pmr_vector_tp  = impl::pmr::vector<std::complex<float>>;
 
 
 template<typename Float_, int nColors = 3>
@@ -94,16 +94,21 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   //
   constexpr bool clean_intermed_fields = true;
   //  
-  const auto cs_param    = StaggeredSpinorFieldArgs<nSpinorParity>{dims, {0, 0, 0, 0}};
+  const auto cs_param    = StaggeredSpinorFieldArgs<nSpinorParity>{dims};
   //
-  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims, {0, 0, 0, 0}};
+  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
 
   // Create full precision gauge field:
   auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
   auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
+#if 0
   constructFatLongGaugeField<0, 1>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
+#else
+  init_su3(fat_lnks);
+  init_su3(long_lnks);
+#endif
 
   // Create low precision gauge field (NOTE: by setting copy_gauge = true we migrate data on the device):  
   constexpr bool copy_gauge = true;
@@ -136,11 +141,12 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
 
   using arg_tp = decltype(src_spinor.Even().ExportArg());  
   //
-  constexpr bool do_warmup = false;
+  constexpr bool do_warmup = true;
   //
   if constexpr (do_warmup) {
     mat(dst_spinor, src_spinor);
   }
+  std::cout << "Begin bench \n" << std::endl;
   //
   auto wall_start = std::chrono::high_resolution_clock::now(); 
   
@@ -155,7 +161,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   
   auto wall_time = (static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(wall_diff).count()) / 1e6)  / niter;
 
-  constexpr bool do_check = true;
+  constexpr bool do_check = false;
 
   if constexpr (do_check) { 
     auto [even_chk, odd_chk] = chk_spinor.EODecompose();    
@@ -230,17 +236,21 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   constexpr int nSpinorParity = 2;
   constexpr int nGaugeParity  = 2;
   // 
-  constexpr bool do_warmup = false; 
+  constexpr bool do_warmup = true; 
   //
-  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{dims, {0, 0, 0, 0}, FieldParity::InvalidFieldParity};
+  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{dims,FieldParity::InvalidFieldParity};
   //
-  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims, {0, 0, 0, 0}};
+  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
   //
   auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
 
   auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
-
+#if 0
   constructFatLongGaugeField<0, 1>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
+#else
+  init_su3(fat_lnks);
+  init_su3(long_lnks);
+#endif
 
   constexpr bool copy_gauge = true;
      
@@ -273,6 +283,8 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   if constexpr (do_warmup) {
     mat(dst_block_spinor, src_block_spinor);    
   }
+
+  std::cout << "Begin bench \n" << std::endl;
 
   auto wall_start = std::chrono::high_resolution_clock::now();   
  

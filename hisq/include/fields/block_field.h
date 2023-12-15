@@ -12,7 +12,7 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   using data_tp       = container_tp::value_type;
 
   if constexpr ( is_pmr_allocator_aware_type<container_tp> ) {
-    const std::size_t pmr_bytes = (arg_.GetFieldSize()+arg_.GetGhostZoneSize())*sizeof(data_tp)*n;
+    const std::size_t pmr_bytes = (arg_.GetFieldSize())*sizeof(data_tp)*n;
 
     const bool reserved = true;
     

@@ -115,26 +115,22 @@ class Field{
     const Arg arg;//copy of the arguments  
     
     container_tp v;
-    container_tp ghost;
 
     template<ContainerTp T = container_tp>
     explicit Field(const Arg &arg_) : arg(arg_),
-                                      v(arg.GetFieldSize()),
-                                      ghost(arg.GetGhostZoneSize()){ }
+                                      v(arg.GetFieldSize()){ }
 
     template<PMRContainerTp T = container_tp>
     explicit Field(const Arg &arg_) : arg( [src_arg = arg_]()->Arg {
                                              auto dst_arg = Arg{src_arg};
                                              dst_arg.template RegisterPMRBuffer<data_tp, true>();
                                              return dst_arg;}() ),
-                                      v(arg.GetFieldSize(), &(*arg.pmr_buffer->Pool())),
-                                      ghost(arg.GetGhostZoneSize(), &(*arg.pmr_buffer->Pool())){ }
+                                      v(arg.GetFieldSize(), &(*arg.pmr_buffer->Pool())){ }
 
     // 
     template <PMRContainerTp T = container_tp>
     explicit Field(std::pmr::monotonic_buffer_resource &pmr_pool, const Arg &arg) : arg(arg),
-    										    v(arg.GetFieldSize(), &pmr_pool), 
-                                                                                    ghost(arg.GetGhostZoneSize(), &pmr_pool) { }
+    										    v(arg.GetFieldSize(), &pmr_pool) { }
 
     template <AllocatorAwareContainerTp alloc_container_tp, typename ArgTp>
     friend decltype(auto) create_field(const ArgTp &arg);    
@@ -155,7 +151,7 @@ class Field{
     Field(Field &&)      = default;    
     //
     template <ContainerViewTp T>    
-    explicit Field(const T &src, const T &ghost_src, const Arg &arg) : arg(arg), v{src}, ghost{ghost_src} {}
+    explicit Field(const T &src, const Arg &arg) : arg(arg), v{src} {}
     
     // Needed for block-la operations
     constexpr std::size_t size() const { return 1ul; } 
@@ -177,7 +173,6 @@ class Field{
       static_assert(is_allocator_aware_type<container_tp> or is_pmr_allocator_aware_type<container_tp>, "Cannot resize a non-owner field!");
 
       v.resize(0ul);
-      ghost.resize(0ul); 
       //
       if constexpr ( std::is_same_v< typename container_tp::allocator_type,  std::pmr::polymorphic_allocator<data_tp> > ) {
         arg.ReleasePMRBuffer();
@@ -199,7 +194,7 @@ class Field{
     decltype(auto) View() {
       static_assert(is_allocator_aware_type<container_tp> or is_pmr_allocator_aware_type<container_tp>, "Cannot reference a non-owner field!");
 
-      return Field<std::span<data_tp>, decltype(arg)>(std::span{v}, std::span{ghost}, arg);	    
+      return Field<std::span<data_tp>, decltype(arg)>(std::span{v}, arg);	    
     }
 
     decltype(auto) ParityView(const FieldParity parity ) {// return a reference to the parity component
@@ -217,10 +212,7 @@ class Field{
       const auto parity_length = GetParityLength();
       const auto parity_offset = parity == FieldParity::EvenFieldParity ? 0 : parity_length;
 
-      const auto ghost_parity_length = GetGhostParityLength();
-      const auto ghost_parity_offset = parity == FieldParity::EvenFieldParity ? 0 : ghost_parity_length;
-
-      return Field<std::span<data_tp>, decltype(parity_arg)>(std::span{v}.subspan(parity_offset, parity_length), std::span{ghost}.subspan(ghost_parity_offset, ghost_parity_length) , parity_arg);
+      return Field<std::span<data_tp>, decltype(parity_arg)>(std::span{v}.subspan(parity_offset, parity_length), parity_arg);
     }
 
     auto Even() { return ParityView(FieldParity::EvenFieldParity );}
@@ -237,15 +229,8 @@ class Field{
     auto GetBytes()                  const { return v.size()*sizeof(data_tp); }
     auto GetParityLength()           const { return v.size() / Nparity(); }
 
-    auto GetGhostParityLength()      const { return ghost.size() / Nparity(); }
-
     auto GetDims()                   const { return arg.GetLatticeDims(); }
     auto GetCBDims()                 const { return arg.GetParityLatticeDims(); }
-    
-    auto GetCommDims()               const { return arg.GetCommDims(); }    
-    auto GetCommDims( const int i )  const { return arg.GetCommDims(i); }
-    
-    auto GetFaceSize( const int i )  const { return arg.GetFaceSize(i); }    
    
     auto GetFieldOrder()   const { return arg.order;  } 
     auto GetFieldParity()  const { return arg.parity; } 
@@ -255,8 +240,6 @@ class Field{
 
     const auto& GetMDStrides() const { return arg.GetMDStrides(); }
 
-    const auto& GetGhostMDStrides() const { return arg.GetGhostMDStrides(); }
-    
     void Info() const {
       std::cout << "Full field dimensions: " << std::endl;
       int i = 0;
@@ -315,61 +298,6 @@ class Field{
           return mdaccessor<is_constant, nColor, nParity>(stridesMD);               
         }        
       }
-    }    
-//??
-#if 0
-    template<bool is_constant, std::size_t... dofs>
-    inline decltype(auto) ghost_mdaccessor(std::array<std::size_t, (Ndim()-1) + sizeof...(dofs)> strides, const int comm_dir) const {    
-      constexpr int nFace         = Arg::nFace();     
-           
-      using dyn_indx_type = std::size_t;
-
-      using DynMDMap  = stdex::layout_stride::mapping<stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>>;
-      using ExtentsMD = stdex::extents<dyn_indx_type, stdex::dynamic_extent, stdex::dynamic_extent, stdex::dynamic_extent, dofs...>;
-          
-      const auto X = GetCommDims(comm_dir); 
-      
-      const auto offset = comm_dir*GetFaceSize(comm_dir)*nFace;//     
-      
-      if constexpr (is_constant){
-        return stdex::mdspan<const data_tp, ExtentsMD, stdex::layout_stride>{
-                    ghost.data()+offset, DynMDMap{ExtentsMD{X}, strides}} ;
-      } else {
-        return stdex::mdspan<data_tp, ExtentsMD, stdex::layout_stride>{
-                   const_cast<data_tp*>(ghost.data() + offset), DynMDMap{ExtentsMD{X}, strides}};
-      }                  
-    }      
-#endif    
-    //Direct field accessors (note that ncolor always 1, so no slicing for this dof):
-    template<bool is_constant = false>    
-    auto GhostAccessor(const int comm_dir) const {
-      //
-#if 0      
-      constexpr std::size_t nDim  = Ndim() - 1;//only one direction            
-      
-      constexpr std::size_t nSpin = Nspin();      
-      constexpr int nParity       = Nparity();
-      
-      constexpr std::size_t nFace = Arg::nFace();//only one direction                  
-
-      const auto& stridesMD = GetGhostMDStrides();
-
-      if constexpr (Arg::type == FieldType::VectorFieldType) {      
-        if constexpr (nParity == 1) {
-          return ghost_mdaccessor<is_constant>(stridesMD, comm_dir);       
-        } else {
-          return ghost_mdaccessor<is_constant, nParity>(stridesMD, comm_dir);               
-        }
-      } else {
-        if constexpr (nParity == 1) {
-          return ghost_mdaccessor<is_constant, nSpin, nFace>(stridesMD, comm_dir);       
-        } else {
-          return ghost_mdaccessor<is_constant, nSpin, nParity, nFace>(stridesMD, comm_dir);               
-        }        
-      }
-#else
-      return nullptr;
-#endif            
     }    
     
 };
