@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
   DslashParam<Float> dslash_param{mass};
 
-  const int niter = 1;
+  const int niter = 100;
   
   std::array dims = {X, X, X, T};
   

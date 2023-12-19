@@ -342,7 +342,7 @@ void constructRandomGaugeField(auto &gauge_field, const FloatTp auto extra_param
   } 
 }
 
-template <int dslash_type, bool link_type, bool compute_fatlong = false>
+template <int dslash_type, int link_type, bool compute_fatlong = false>
 void constructFatLongGaugeField(auto &fatlink, auto &longlink, const FloatTp auto anisotropy, const FloatTp auto tadpole_coeff, int test_type/*0,1,2*/) {  
   //
   constexpr bool is_constant = false;
