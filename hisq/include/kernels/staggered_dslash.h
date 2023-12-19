@@ -46,7 +46,7 @@ class StaggeredDslash{
 
     StaggeredDslash(const Arg &args) : args(args) {}        
 
-    template<bool improved = false>
+    template<bool improved = true>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 
@@ -173,9 +173,6 @@ class StaggeredDslash{
                auto &&post_transformer,               
                const auto cartesian_idx,
                const FieldParity parity) {	    
-      // Dslash_nm = (M + 2r) \delta_nm - 0.5 * \sum_\mu  ((r - \gamma_\mu)*U_(x){\mu}*\delta_{m,n+\mu} + (r + \gamma_\mu)U^*(x-mu)_{\mu}\delta_{m,n-\mu})
-      //
-      // gamma_{1/2} -> sigma_{1/2}, gamma_{5} -> sigma_{3}
       //
       using S = typename std::remove_cvref_t<decltype(out_spinor[0])>;       
 
@@ -206,9 +203,6 @@ class StaggeredDslash{
                const GenericStaggeredSpinorFieldViewTp auto &in_spinor,
                const auto cartesian_idx,
                const FieldParity parity) {	    
-      // Dslash_nm = \sum_\mu  ((r - \gamma_\mu)*U_(x){\mu}*\delta_{m,n+\mu} + (r + \gamma_\mu)U^*(x-mu)_{\mu}\delta_{m,n-\mu})
-      //
-      // gamma_{1/2} -> sigma_{1/2}, gamma_{5} -> sigma_{3}
       //
       using S = typename std::remove_cvref_t<decltype(out_spinor[0])>; 
 

@@ -10,8 +10,10 @@
 
 #include <typeinfo>
 
-// Custom concept for both single and block spinors:
-template<typename T> concept SpinorField = GenericStaggeredSpinorFieldTp<T> or GenericBlockStaggeredSpinorFieldTp<T>;
+// Custom concepts for both single and block spinors:
+template<typename T> concept ParitySpinorField = GenericStaggeredParitySpinorFieldTp<T> or GenericBlockStaggeredParitySpinorFieldTp<T>;
+
+template<typename T> concept FullSpinorField   = GenericStaggeredFullSpinorFieldTp<T>   or GenericBlockStaggeredFullSpinorFieldTp<T>;
 
 //DslashTransform
 template<typename KernelArgs, template <typename Args> class Kernel>
@@ -54,12 +56,7 @@ class DslashTransform{
                     DslashKernel);    
     }    
  
-    void operator()(GenericStaggeredSpinorFieldTp auto &out, const GenericStaggeredSpinorFieldTp auto &in, const GenericStaggeredSpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
-      
-      if ( in.GetFieldOrder() != FieldOrder::EOFieldOrder and in.GetFieldSubset() != FieldSiteSubset::ParitySiteSubset ) { 
-        std::cerr << "Only parity field is allowed." << std::endl; 
-        std::quick_exit( EXIT_FAILURE );  
-      }    
+    void operator()(GenericStaggeredParitySpinorFieldTp auto &out, const GenericStaggeredParitySpinorFieldTp auto &in, const GenericStaggeredParitySpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
       
       using spinor_tp    = typename std::remove_cvref_t<decltype(in)>;
       using container_tp = spinor_tp::container_tp;
@@ -79,8 +76,6 @@ class DslashTransform{
     }
     
     void operator()(GenericBlockStaggeredSpinorFieldTp auto &out_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &in_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
-      //   
-      assert(in_block_spinor.GetFieldOrder() == FieldOrder::EOFieldOrder and in_block_spinor.GetFieldSubset() == FieldSiteSubset::ParitySiteSubset);
 
       using block_spinor_tp        = typename std::remove_cvref_t<decltype(in_block_spinor)>;
       using component_container_tp = block_spinor_tp::container_tp;      
@@ -121,12 +116,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
 
     Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity, const bool dagger = false) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
 
-    void operator()(SpinorField auto &out, const SpinorField auto &in, const SpinorField auto &aux){
-      // Check all arguments!
-      if(out.GetFieldSubset() != FieldSiteSubset::ParitySiteSubset) { 
-        std::cerr << "Error: undefined parity.. exiting\n";
-        std::quick_exit( EXIT_FAILURE );
-      }       
+    void operator()(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){
+      // Check all arguments!      
       
       using SpinorTp = typename std::remove_cvref_t<decltype(out[0])>; 
       //
@@ -153,12 +144,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
       DslashTransform<KernelArgs, Kernel>::operator()(out, in,  aux, transformer, parity);
     }
     
-    void operator()(SpinorField auto &out, SpinorField auto &in){//FIXME: in argument must be constant
+    void operator()(FullSpinorField auto &out, FullSpinorField auto &in){//FIXME: in argument must be constant
       // Check all arguments!
-      if( out.GetFieldSubset() != FieldSiteSubset::FullSiteSubset ) { 
-        std::cerr << "This operation is supported for full fields only...\n";
-        std::quick_exit( EXIT_FAILURE );
-      }  
       
       using SpinorTp     = typename std::remove_cvref_t<decltype(out[0])>; 
       //

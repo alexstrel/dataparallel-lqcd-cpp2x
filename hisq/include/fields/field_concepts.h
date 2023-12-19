@@ -11,7 +11,8 @@ concept GenericStaggeredSpinorFieldTp = requires{
   requires (T::Nspin()   == invalid_spin);
   requires (T::Ncolor()  == 1ul or T::Ncolor() == 3ul);
   requires (T::Ndir()    == invalid_dir); 
-  requires (T::Nparity() == invalid_parity or T::Nparity() == 1 or T::Nparity() == 2);     
+  //we don't require a paticular parity property for the spinor fields
+  //requires (T::Nparity() == invalid_parity or T::Nparity() == 1 or T::Nparity() == 2);     //we don't require a paticular parity property for the spinor fields
 };
 
 // Generic Gauge Field type:
@@ -69,6 +70,19 @@ template <typename T>
 concept BlockStaggeredSpinorFieldViewTp   = ContainerViewTp<T> and StaggeredSpinorFieldViewTp< typename std::remove_pointer< decltype( std::declval<T>().data() ) >::type >;
 
 
+// Some even more specialized concepts:
+
+template<typename T> concept GenericStaggeredParitySpinorFieldTp = GenericStaggeredSpinorFieldTp<T> and requires { requires (T::Nparity() == 1); };
+//
+template<typename T> concept GenericStaggeredFullSpinorFieldTp   = GenericStaggeredSpinorFieldTp<T> and requires { requires (T::Nparity() == 2); };
+
+template <typename T>
+concept GenericBlockStaggeredParitySpinorFieldTp  = ContainerTp<typename T::block_container_tp> and GenericStaggeredParitySpinorFieldTp< typename std::remove_pointer< decltype( std::declval<typename T::block_container_tp>().data() ) >::type >;
+
+template <typename T>
+concept GenericBlockStaggeredFullSpinorFieldTp    = ContainerTp<typename T::block_container_tp> and GenericStaggeredFullSpinorFieldTp< typename std::remove_pointer< decltype( std::declval<typename T::block_container_tp>().data() ) >::type >;
+
+//??
 template <typename T>
 concept GenericStaggeredSpinorFieldViewTp = StaggeredSpinorFieldViewTp<T> or BlockStaggeredSpinorFieldViewTp<T>;
 
