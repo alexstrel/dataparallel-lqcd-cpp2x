@@ -15,10 +15,12 @@ class DslashParam{
 
 constexpr bool is_constant = true;
 
-template <GaugeFieldViewTp gauge_tp>
+template <GaugeFieldViewTp gauge_tp, bool is_improved = true>
 class StaggeredDslashArgs {
   public:
     using gauge_data_tp  = typename gauge_tp::data_tp;	  
+
+    static constexpr bool improved = is_improved;
 
     static constexpr std::size_t nDir   = gauge_tp::Ndir();
     static constexpr std::size_t nDim   = gauge_tp::Ndim();    
@@ -46,7 +48,7 @@ class StaggeredDslash{
 
     StaggeredDslash(const Arg &args) : args(args) {}        
 
-    template<bool improved = true>
+    template<bool dagger>
     inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
     
       using Link   = ArgTp::LinkTp; 
@@ -91,7 +93,7 @@ class StaggeredDslash{
           X[d] = Xd;	  
 	}
 	//  Improved fwd gather:
-        if constexpr (improved) { 
+        if constexpr (ArgTp::improved) { 
 	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
           const int bndr = d==0 ? 2*in.Extent(d) : in.Extent(d);
 
@@ -139,7 +141,7 @@ class StaggeredDslash{
           X[d] = Xd;	            
 	}
 	// Bwd neighbour contribution:
-	if constexpr (improved) {
+	if constexpr (ArgTp::improved) {
   	  const int Xf = d == 0 ? 2*Xd + parity_bit : Xd;
          
           if ( Xf < 3 ) {
@@ -164,9 +166,12 @@ class StaggeredDslash{
 	}		
       }
 
+      if constexpr (dagger) res.negate();
+
       return res;
     }     
  
+    template<bool dagger>
     void apply(GenericStaggeredSpinorFieldViewTp auto &out_spinor,
                const GenericStaggeredSpinorFieldViewTp auto &in_spinor,
                const GenericStaggeredSpinorFieldViewTp auto &aux_spinor,
@@ -186,7 +191,7 @@ class StaggeredDslash{
         const auto in    = FieldAccessor<S, is_constant>{in_spinor[i]};
         const auto aux   = FieldAccessor<S, is_constant>{aux_spinor[i]};        
         //
-        auto res = compute_parity_site_stencil(in, parity, X_view);
+        auto res = compute_parity_site_stencil<dagger>(in, parity, X_view);
         //
         const auto aux_  = aux(X_view);
         //
@@ -199,6 +204,7 @@ class StaggeredDslash{
       }//end of for loop
     }    
 
+    template<bool dagger>
     void apply(GenericStaggeredSpinorFieldViewTp auto &out_spinor,
                const GenericStaggeredSpinorFieldViewTp auto &in_spinor,
                const auto cartesian_idx,
@@ -215,7 +221,7 @@ class StaggeredDslash{
         auto out         = FieldAccessor<S>{out_spinor[i]};
         const auto in    = FieldAccessor<S, is_constant>{in_spinor[i]};
         //
-        auto res = compute_parity_site_stencil(in, parity, X_view);
+        auto res = compute_parity_site_stencil<dagger>(in, parity, X_view);
     
 #pragma unroll
         for (int c = 0; c < S::Ncolor(); c++){

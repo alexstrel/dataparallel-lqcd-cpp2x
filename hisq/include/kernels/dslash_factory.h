@@ -30,11 +30,12 @@ class DslashTransform{
     
     KernelArgs& ExportKernelArgs() const { return dslash_kernel_ptr->args; }
     
+    template<bool dagger>
     inline void launch_dslash(GenericStaggeredSpinorFieldViewTp auto &out_view, const GenericStaggeredSpinorFieldViewTp auto &in_view, const GenericStaggeredSpinorFieldViewTp auto &aux_view, auto&& post_transformer, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
-                            dslash_kernel.template apply(out_view, in_view, aux_view, post_transformer, coords, parity); 
+                            dslash_kernel.template apply<dagger>(out_view, in_view, aux_view, post_transformer, coords, parity); 
                           };
       //
       std::for_each(std::execution::par_unseq,
@@ -43,11 +44,12 @@ class DslashTransform{
                     DslashKernel);    
     } 
     
+    template<bool dagger>
     inline void launch_dslash(GenericStaggeredSpinorFieldViewTp auto &out_view, const GenericStaggeredSpinorFieldViewTp auto &in_view, const FieldParity parity, const auto ids) {
       
       auto DslashKernel = [=, &dslash_kernel   = *dslash_kernel_ptr] (const auto coords) { 
                             //
-                            dslash_kernel.template apply(out_view, in_view, coords, parity); 
+                            dslash_kernel.template apply<dagger>(out_view, in_view, coords, parity); 
                           };
       //
       std::for_each(std::execution::par_unseq,
@@ -55,7 +57,8 @@ class DslashTransform{
                     ids.end(),
                     DslashKernel);    
     }    
- 
+
+    template<bool dagger> 
     void operator()(GenericStaggeredParitySpinorFieldTp auto &out, const GenericStaggeredParitySpinorFieldTp auto &in, const GenericStaggeredParitySpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
       
       using spinor_tp    = typename std::remove_cvref_t<decltype(in)>;
@@ -69,12 +72,13 @@ class DslashTransform{
         const auto&& in_view  = in.View();
         const auto&& aux_view = aux.View();         
         
-        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);
+        launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);
       } else {
-        launch_dslash(out, in, aux, post_transformer, parity, ids);  
+        launch_dslash<dagger>(out, in, aux, post_transformer, parity, ids);  
       } 
     }
     
+    template<bool dagger>
     void operator()(GenericBlockStaggeredSpinorFieldTp auto &out_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &in_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
 
       using block_spinor_tp        = typename std::remove_cvref_t<decltype(in_block_spinor)>;
@@ -93,13 +97,13 @@ class DslashTransform{
         auto &&in_view     = in_block_spinor_view.BlockView(); 
         auto &&aux_view    = aux_block_spinor_view.BlockView();         
         
-        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);  
+        launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);  
       } else {
         auto &&out_view    = out_block_spinor.BlockView();
         auto &&in_view     = in_block_spinor.BlockView(); 
         auto &&aux_view  = aux_block_spinor.BlockView();         
       
-        launch_dslash(out_view, in_view, aux_view, post_transformer, parity, ids);  
+        launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);  
       }                    
     }    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -114,8 +118,9 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
  
   public:
 
-    Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity, const bool dagger = false) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
+    Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
 
+    template<bool dagger = false>
     void operator()(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){
       // Check all arguments!      
       
@@ -141,9 +146,10 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
         }
       };      
       //
-      DslashTransform<KernelArgs, Kernel>::operator()(out, in,  aux, transformer, parity);
+      DslashTransform<KernelArgs, Kernel>::template operator()<dagger>(out, in,  aux, transformer, parity);
     }
     
+    template<bool dagger = false>
     void operator()(FullSpinorField auto &out, FullSpinorField auto &in){//FIXME: in argument must be constant
       // Check all arguments!
       
@@ -173,8 +179,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
           }
         }; 
         //
-        DslashTransform<KernelArgs, Kernel>::operator()(even_out, odd_in,  even_in, transformer, FieldParity::EvenFieldParity);
-        DslashTransform<KernelArgs, Kernel>::operator()(odd_out,  even_in, odd_in,  transformer, FieldParity::OddFieldParity);       
+        DslashTransform<KernelArgs, Kernel>::template operator()<dagger>(even_out, odd_in,  even_in, transformer, FieldParity::EvenFieldParity);
+        DslashTransform<KernelArgs, Kernel>::template operator()<dagger>(odd_out,  even_in, odd_in,  transformer, FieldParity::OddFieldParity);       
       }
     }    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    

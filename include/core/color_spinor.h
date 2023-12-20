@@ -74,6 +74,11 @@ namespace impl{
           }
           return *this;
         }
+
+        inline void negate() {
+#pragma unroll
+            for (int i = 0; i < data.size(); i++) { data[i] = -data[i]; }
+        }
             
         inline decltype(auto) spincolor_cview() const {
           return CView3D(data.data());
