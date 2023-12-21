@@ -191,10 +191,15 @@ class Field{
     auto Get( ) const { return v.data(); }    
 
     //Return a reference to the object (data access via std::span )
-    decltype(auto) View() {
-      static_assert(is_allocator_aware_type<container_tp> or is_pmr_allocator_aware_type<container_tp>, "Cannot reference a non-owner field!");
-
+    decltype(auto) View() const {
       return Field<std::span<data_tp>, decltype(arg)>(std::span{v}, arg);	    
+    }
+
+    decltype(auto) View() {
+      //if constexpr ( is_memory_non_owning_type<container_tp> ) {
+        //return *this;
+      //}
+      return Field<std::span<data_tp>, decltype(arg)>(std::span{v}, arg);
     }
 
     decltype(auto) ParityView(const FieldParity parity ) {// return a reference to the parity component

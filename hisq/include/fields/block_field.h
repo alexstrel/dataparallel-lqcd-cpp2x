@@ -67,7 +67,9 @@ class BlockSpinor{
     BlockSpinor(const SpinorArg &args_, const std::size_t n) : args(args_) { v.reserve(n); }    
 
     decltype(auto) ConvertToView() {
-      static_assert(!is_memory_non_owning_type<container_tp>, "Cannot reference a non-owner field!");
+      //if constexpr (is_memory_non_owning_type<container_tp>) {
+        //return *this;
+      //}
       
       using spinor_view_t = decltype(std::declval<spinor_t>().View());      
 

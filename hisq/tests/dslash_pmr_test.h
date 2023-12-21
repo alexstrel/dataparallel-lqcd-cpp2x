@@ -15,23 +15,26 @@ constexpr int num_dir  = 2 * 4;
 
 void run_pmr_dslash_test(auto params, const auto dims, const int niter, const int test_type) {
   //
-  const int vol = dims[0]*dims[1]*dims[2]*dims[3];
+  const int vol = dims[0]*dims[1]*dims[2]*dims[3] / 2;
   //
   auto gflop = (( (2*num_dir*mv_flops + (2*num_dir-1)*2*3 /*accumulation*/ + 2*2*3 /*xpay flops*/)*vol)) * 1e-9 ;
   //
-  constexpr int nSpinorParity = 2;
-  constexpr int nGaugeParity  = 2;
+  constexpr FieldParity parity   = FieldParity::EvenFieldParity;
+  //
+  constexpr int nSrcSpinorParity = 2;
+  //
+  constexpr int nGaugeParity     = 2;
   //
   constexpr bool clean_intermed_fields = true;
   //  
-  const auto cs_param    = StaggeredSpinorFieldArgs<nSpinorParity>{dims};
+  const auto src_cs_param = StaggeredSpinorFieldArgs<nSrcSpinorParity>{dims};
   //
-  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
+  const auto gauge_param  = GaugeFieldArgs<nGaugeParity>{dims};
 
   // Create full precision gauge field:
-  auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  GaugeField auto fat_lnks  = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
-  auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  GaugeField auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
 #if 1
   constructFatLongGaugeField<1, 2>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
@@ -43,22 +46,23 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   // Create low precision gauge field (NOTE: by setting copy_gauge = true we migrate data on the device):  
   constexpr bool copy_gauge = true;
 
-  auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
+  GaugeField auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
 
-  auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);  
-
-  auto src_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(cs_param)>(cs_param);
-  auto chk_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(cs_param)>(cs_param);  
-  
-  using cs_param_tp = decltype(src_spinor.ExportArg());
-  
-  auto dst_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, cs_param_tp>(cs_param);
+  GaugeField auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);  
+  //
+  FullSpinorField auto src_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(src_cs_param)>(src_cs_param);
+  //
+  auto dst_cs_param = parity == FieldParity::EvenFieldParity ? src_spinor.Even().ExportArg() : src_spinor.Odd().ExportArg();//not really needed?
+  //
+  ParitySpinorField auto dst_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(dst_cs_param)>(dst_cs_param);
+  //
+  ParitySpinorField auto chk_spinor  = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(dst_cs_param)>(dst_cs_param);
   //
   init_spinor(src_spinor);  
 
   // Setup dslash arguments:
-  auto &&fl_ref  = sloppy_fat_lnks.View();
-  auto &&ll_ref  = sloppy_long_lnks.View();
+  GaugeField auto &&fl_ref  = sloppy_fat_lnks.View();
+  GaugeField auto &&ll_ref  = sloppy_long_lnks.View();
 
   using sloppy_gauge_tp = decltype(sloppy_fat_lnks.View());
 
@@ -67,14 +71,14 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   auto &hisq_args = *hisq_args_ptr;
 
   // Create dslash matrix
-  auto mat = Mat<decltype(hisq_args), StaggeredDslash, decltype(params)>{hisq_args, params};
+  auto mat = Mat<decltype(hisq_args), StaggeredDslash, decltype(params)>{hisq_args, params, parity};
 
   using arg_tp = decltype(src_spinor.Even().ExportArg());  
   //
-  constexpr bool do_warmup = false;
+  const bool do_warmup = true; 
   //
-  if constexpr (do_warmup) {
-    mat(dst_spinor, src_spinor);
+  if (do_warmup) {
+    mat(dst_spinor, src_spinor.Even());
   }
   std::cout << "Begin bench \n" << std::endl;
   //
@@ -82,7 +86,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   
   for(int i = 0; i < niter; i++) {
 
-    mat(dst_spinor, src_spinor);    
+    mat(dst_spinor, src_spinor.Even());    
   }
 
   auto wall_stop = std::chrono::high_resolution_clock::now();
@@ -94,25 +98,18 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   constexpr bool do_check = false;
 
   if constexpr (do_check) { 
-    auto [even_chk, odd_chk] = chk_spinor.EODecompose();    
+    const int parity_bit = parity == FieldParity::EvenFieldParity ? 0 : 1;
 #if 0  
-    StaggeredDslashRef<float>(even_chk, src_spinor.Odd(),  src_spinor.Even(), sloppy_fat_lnks, params.M, even_chk.GetCBDims(), 0); 
-    StaggeredDslashRef<float>(odd_chk,  src_spinor.Even(),  src_spinor.Odd(),  sloppy_fat_lnks, params.M, odd_chk.GetCBDims(), 1);   
+    StaggeredDslashRef<float>(chk_spinor, src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, params.M, even_chk.GetCBDims(), 0); 
 #else
-    ImprovedDslashRef<float>(even_chk, src_spinor.Odd(),  src_spinor.Even(), sloppy_fat_lnks, sloppy_long_lnks, params.M, even_chk.GetCBDims(), 0);
-    ImprovedDslashRef<float>(odd_chk,  src_spinor.Even(),  src_spinor.Odd(),  sloppy_fat_lnks, sloppy_long_lnks, params.M, odd_chk.GetCBDims(), 1);
+    ImprovedDslashRef<float>(chk_spinor, src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, sloppy_long_lnks, params.M, chk_spinor.GetCBDims(), parity_bit);
 #endif    
 
 
-    auto &&chk_e = even_chk.Accessor();
-    auto &&dst_e = dst_spinor.Even().Accessor();     
+    auto &&chk = chk_spinor.Accessor();
+    auto &&dst = dst_spinor.Accessor();     
     //
-    check_field(chk_e, dst_e, 1e-6);
-    //
-    auto &&chk_o = odd_chk.Accessor();
-    auto &&dst_o = dst_spinor.Odd().Accessor();     
-    //
-    check_field(chk_o, dst_o, 1e-6);    
+    check_field(chk, dst, 1e-6);
   }    
   
   std::cout << "Done for EO version : time per iteration is > " << wall_time << "sec." << std::endl; 
@@ -130,14 +127,14 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   std::cout << "Run next src (re-use buffer)" << std::endl;
 
-  auto src_spinor_v2   = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(cs_param)>(cs_param);
-  auto dst_spinor_v2   = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(cs_param)>(cs_param);
+  auto src_spinor_v2   = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(src_cs_param)>(src_cs_param);
+  auto dst_spinor_v2   = create_field_with_buffer<sloppy_pmr_vector_tp, decltype(dst_cs_param)>(dst_cs_param);
 
   wall_start = std::chrono::high_resolution_clock::now();   
 
   for(int i = 0; i < niter; i++) {
     // Apply dslash	  
-    mat(dst_spinor_v2, src_spinor_v2);
+    mat(dst_spinor_v2, src_spinor_v2.Even());
   }
   
   wall_stop = std::chrono::high_resolution_clock::now();
