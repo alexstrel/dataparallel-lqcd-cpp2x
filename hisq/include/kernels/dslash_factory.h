@@ -12,8 +12,14 @@
 
 // Custom concepts for both single and block spinors:
 template<typename T> concept ParitySpinorField = GenericStaggeredParitySpinorFieldTp<T> or GenericBlockStaggeredParitySpinorFieldTp<T>;
+//
+template<typename T> concept GenericParitySpinorFieldView = StaggeredParitySpinorFieldViewTp<T> or BlockStaggeredParitySpinorFieldViewTp<T>;
 
-template<typename T> concept FullSpinorField   = GenericStaggeredFullSpinorFieldTp<T>   or GenericBlockStaggeredFullSpinorFieldTp<T>;
+template<typename T> concept FullSpinorField   = GenericStaggeredFullSpinorFieldTp<T> or GenericBlockStaggeredFullSpinorFieldTp<T>;
+
+template<typename T> concept BlockSpinorField  = GenericBlockStaggeredFullSpinorFieldTp<T>;
+//
+template<typename T> concept BlockParitySpinorField = GenericBlockStaggeredFullSpinorFieldTp<T>;
 
 template<typename T> concept GaugeField = GenericGaugeFieldTp<T> and requires { requires (T::Nparity() == 2); };
 
@@ -60,7 +66,17 @@ class DslashTransform{
                     DslashKernel);    
     }    
 
+    template<bool dagger>
+    requires ( std::remove_cvref_t<KernelArgs>::convert_args() == false) 
+    void operator()(GenericParitySpinorFieldView auto &out, const GenericParitySpinorFieldView auto &in, const GenericParitySpinorFieldView auto &aux, auto&& post_transformer, const FieldParity parity){
+      // Setup exe domain
+      auto ids = impl::cartesian_4d_view(out.GetCBDims());
+      //
+      launch_dslash<dagger>(out, in, aux, post_transformer, parity, ids);
+    }
+
     template<bool dagger> 
+    requires ( std::remove_cvref_t<KernelArgs>::convert_args() == true )
     void operator()(GenericStaggeredParitySpinorFieldTp auto &out, const GenericStaggeredParitySpinorFieldTp auto &in, const GenericStaggeredParitySpinorFieldTp auto &aux, auto&& post_transformer, const FieldParity parity){
       // Setup exe domain
       auto ids = impl::cartesian_4d_view(out.GetCBDims());
@@ -73,21 +89,22 @@ class DslashTransform{
       // Launch the kernels  
       launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);
     }
-    
+
     template<bool dagger>
-    void operator()(GenericBlockStaggeredSpinorFieldTp auto &out_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &in_block_spinor, GenericBlockStaggeredSpinorFieldTp auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){ 
+    requires ( std::remove_cvref_t<KernelArgs>::convert_args() == true )
+    void operator()(ParitySpinorField auto &out_block_spinor, const ParitySpinorField auto &in_block_spinor, const ParitySpinorField auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity ){    
       //Setup exe domain :
       auto ids = impl::cartesian_4d_view(out_block_spinor.GetCBDims());      
 
       //First, we need to convert to views all components in the block
       auto &&out_block_spinor_view    = out_block_spinor.ConvertToView();
-      auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       
-      auto &&aux_block_spinor_view    = aux_block_spinor.ConvertToView();               
+      const auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       
+      const auto &&aux_block_spinor_view    = aux_block_spinor.ConvertToView();               
 
       //Second, create a view for the whole block spinor container:
       auto &&out_view    = out_block_spinor_view.BlockView();
-      auto &&in_view     = in_block_spinor_view.BlockView(); 
-      auto &&aux_view    = aux_block_spinor_view.BlockView();         
+      const auto &&in_view     = in_block_spinor_view.BlockView(); 
+      const auto &&aux_view    = aux_block_spinor_view.BlockView();         
         
       //Finally, launch the kernel:
       launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);  
@@ -106,9 +123,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
 
     template<bool dagger = false>
-    void DslashXpay(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){
+    void DslashXpay(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){	    
       // Check all arguments!      
-      
       using SpinorTp = typename std::remove_cvref_t<decltype(out[0])>; 
       //
       constexpr int nDoF   = SpinorTp::Type() == FieldType::StaggeredSpinorFieldType? SpinorTp::Ncolor() : SpinorTp::Ncolor() * SpinorTp::Nspin();
@@ -135,46 +151,10 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     }
 
     template<bool dagger = false>
-    void operator()(ParitySpinorField auto &out, const ParitySpinorField auto &in){
+    void operator()(auto &&out, const auto &in){//why do we need rvalue ref here?
       // Check all arguments!      
       DslashXpay<dagger>(out, in, in);
-    }
-
-    template<bool dagger = false>
-    void operator()(FullSpinorField auto &out, FullSpinorField auto &in){//FIXME: in argument must be constant
-      // Check all arguments!
-      
-      using SpinorTp     = typename std::remove_cvref_t<decltype(out[0])>; 
-      //
-      constexpr int nDoF   = SpinorTp::Type() == FieldType::StaggeredSpinorFieldType? SpinorTp::Ncolor() : SpinorTp::Ncolor() * SpinorTp::Nspin();
-      //
-      constexpr int bsize  = DslashTransform<KernelArgs, Kernel>::bSize;      
-
-      const auto c = static_cast<DslashTransform<KernelArgs, Kernel>::kernel_data_tp>(2*param.M);
-
-      auto [even_in,   odd_in] = in.EODecompose();
-      auto [even_out, odd_out] = out.EODecompose();
-      //
-      {            
-        auto transformer = [=](const auto &x, auto &y) {
-          //
-          const auto &&x_ = x.flat_cview();
-          auto &&y_ = y.flat_view();        
-          //
-#pragma unroll              
-          for(int n = 0; n < nDoF; n++ ) {
-#pragma unroll              
-            for(int b = 0; b < bsize; b++) {
-              y_(n, b) = (c*x_(n, b)-y_(n, b));
-            }
-          }
-        }; 
-        //
-        DslashTransform<KernelArgs, Kernel>::template operator()<dagger>(even_out, odd_in,  even_in, transformer, FieldParity::EvenFieldParity);
-        DslashTransform<KernelArgs, Kernel>::template operator()<dagger>(odd_out,  even_in, odd_in,  transformer, FieldParity::OddFieldParity);       
-      }
-    }    
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
+    }  
 };
 
 

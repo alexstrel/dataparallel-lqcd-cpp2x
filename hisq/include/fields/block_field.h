@@ -36,6 +36,7 @@ class BlockSpinor{
     using container_tp  = typename spinor_t::container_tp;
     using arg_tp        = SpinorArg;
     using spinor_tp     = spinor_t;
+    using spinor_view_t = decltype(std::declval<spinor_t>().View());    
 
     block_container_tp v;
 
@@ -67,15 +68,7 @@ class BlockSpinor{
     BlockSpinor(const SpinorArg &args_, const std::size_t n) : args(args_) { v.reserve(n); }    
 
     decltype(auto) ConvertToView() {
-      //if constexpr (is_memory_non_owning_type<container_tp>) {
-        //return *this;
-      //}
-      
-      using spinor_view_t = decltype(std::declval<spinor_t>().View());      
-
-      const std::size_t n = nComponents();
-
-      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args, n};
+      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args, nComponents()};
 
       auto&& src_v = block_spinor_view.Get();
 
@@ -83,6 +76,16 @@ class BlockSpinor{
 
       return block_spinor_view;     
     }
+    
+    decltype(auto) ConvertToView() const {
+      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args,  nComponents()};
+
+      auto&& src_v = block_spinor_view.Get();
+
+      for(auto &v_el : v) { src_v.push_back(v_el.View()); }
+
+      return block_spinor_view;     
+    } 
 
     decltype(auto) ConvertToParityView(const FieldParity parity ) {
       static_assert(!is_memory_non_owning_type<container_tp>, "Cannot reference a non-owner field!");
@@ -115,8 +118,10 @@ class BlockSpinor{
     }    
 
     auto& Get()  { return v; }
+    
+    decltype(auto) BlockView()       { return std::span{v}; }
 
-    decltype(auto) BlockView() { return std::span{v}; }
+    decltype(auto) BlockView() const { return std::span{v}; }
 
     auto GetDims()       const { return args.GetLatticeDims(); }
     auto GetCBDims()     const { return args.GetParityLatticeDims(); }    
@@ -134,7 +139,22 @@ class BlockSpinor{
       args.ReleasePMRBuffer();
     }
 
-    decltype(auto) ExportArg() { return args; }      
+    decltype(auto) ExportArg() { return args; }
+    
+    decltype(auto) ExportParityArg(const FieldParity parity) { 
+      if constexpr (std::remove_cvref_t<SpinorArg>::nparity == 1) {
+        std::quick_exit( EXIT_FAILURE );
+      }
+      //
+      constexpr int nDim   = std::remove_cvref_t<SpinorArg>::ndim;      
+      constexpr int nDir   = std::remove_cvref_t<SpinorArg>::ndir;            
+      constexpr int nColor = std::remove_cvref_t<SpinorArg>::ncolor;
+      constexpr int nSpin  = std::remove_cvref_t<SpinorArg>::nspin;      
+      
+      constexpr std::size_t nParity = 1;
+      
+      return FieldDescriptor<nDim, nDir, nSpin, nColor, nParity>(this->args, parity);
+    }  
 
     spinor_t& operator[](const std::size_t i) { return v[i]; }
 };

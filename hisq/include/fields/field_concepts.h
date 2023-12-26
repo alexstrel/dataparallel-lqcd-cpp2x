@@ -83,6 +83,11 @@ template <typename T>
 concept GenericBlockStaggeredFullSpinorFieldTp    = ContainerTp<typename T::block_container_tp> and GenericStaggeredFullSpinorFieldTp< typename std::remove_pointer< decltype( std::declval<typename T::block_container_tp>().data() ) >::type >;
 
 //??
+template<typename T> concept StaggeredParitySpinorFieldViewTp = StaggeredSpinorFieldViewTp<T> and requires { requires (T::Nparity() == 1); };
+
+template <typename T>
+concept BlockStaggeredParitySpinorFieldViewTp  = ContainerViewTp<T> and StaggeredParitySpinorFieldViewTp< typename std::remove_pointer< decltype( std::declval<T>().data() ) >::type >;
+
 template <typename T>
 concept GenericStaggeredSpinorFieldViewTp = StaggeredSpinorFieldViewTp<T> or BlockStaggeredSpinorFieldViewTp<T>;
 

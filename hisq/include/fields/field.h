@@ -114,7 +114,7 @@ class Field{
   private: 
     const Arg arg;//copy of the arguments  
     
-    container_tp v;
+    mutable container_tp v;//WARNING: edit it
 
     template<ContainerTp T = container_tp>
     explicit Field(const Arg &arg_) : arg(arg_),
@@ -180,6 +180,17 @@ class Field{
     }
 
     decltype(auto) ExportArg() const { return Arg{arg}; }
+    
+    decltype(auto) ExportParityArg(const FieldParity parity) const { 
+    
+      if constexpr ( Nparity() == 1 ){
+        std::quick_exit( EXIT_FAILURE );
+      }
+      //
+      constexpr std::size_t nparity = 1;
+      //
+      return FieldDescriptor<Ndim(), Ndir(), Nspin(), Ncolor(), nparity>(this->arg, parity); 
+    }
 
     auto Begin() { return v.begin(); }
     auto End()   { return v.end();   }
@@ -196,9 +207,6 @@ class Field{
     }
 
     decltype(auto) View() {
-      //if constexpr ( is_memory_non_owning_type<container_tp> ) {
-        //return *this;
-      //}
       return Field<std::span<data_tp>, decltype(arg)>(std::span{v}, arg);
     }
 
@@ -212,7 +220,7 @@ class Field{
       //           
       constexpr std::size_t nparity = 1;
       
-      auto parity_arg = FieldDescriptor<Ndim(), Ndir(), Nspin(), Ncolor(), nparity>(this->arg, parity);
+      const auto parity_arg = FieldDescriptor<Ndim(), Ndir(), Nspin(), Ncolor(), nparity>(this->arg, parity);
       //
       const auto parity_length = GetParityLength();
       const auto parity_offset = parity == FieldParity::EvenFieldParity ? 0 : parity_length;

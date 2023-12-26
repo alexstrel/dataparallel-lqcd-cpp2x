@@ -15,7 +15,7 @@ class DslashParam{
 
 constexpr bool is_constant = true;
 
-template <GaugeFieldViewTp gauge_tp, bool is_improved = true>
+template <GaugeFieldViewTp gauge_tp, bool do_arg_conversion = true, bool is_improved = true>
 class StaggeredDslashArgs {
   public:
     using gauge_data_tp  = typename gauge_tp::data_tp;	  
@@ -26,9 +26,10 @@ class StaggeredDslashArgs {
     static constexpr std::size_t nDim   = gauge_tp::Ndim();    
     
 //!    static constexpr std::size_t bSize  = bSize_;    
-
     static constexpr std::size_t bSize  = 1;    
-    
+
+    static consteval bool convert_args() { return do_arg_conversion; }    
+
     using LinkAccessor = FieldAccessor<gauge_tp, is_constant, bSize>;//only constant links   
     using LinkTp       = LinkAccessor::LinkTp;
 

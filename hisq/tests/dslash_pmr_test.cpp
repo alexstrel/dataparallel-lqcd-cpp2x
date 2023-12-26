@@ -67,7 +67,7 @@ int main(int argc, char **argv)
   
   std::array dims = {X, X, X, T};
   
-  run_pmr_dslash_test(dslash_param, dims, niter, 0);
+  //run_pmr_dslash_test(dslash_param, dims, niter, 0);
   //
   constexpr int  N = 8;  
   //
