@@ -118,10 +118,8 @@ class BlockSpinor{
     }    
 
     auto& Get()  { return v; }
-    
-    decltype(auto) BlockView()       { return std::span{v}; }
 
-    decltype(auto) BlockView() const { return std::span{v}; }
+    decltype(auto) BlockView() { return std::span{v}; }
 
     auto GetDims()       const { return args.GetLatticeDims(); }
     auto GetCBDims()     const { return args.GetParityLatticeDims(); }    

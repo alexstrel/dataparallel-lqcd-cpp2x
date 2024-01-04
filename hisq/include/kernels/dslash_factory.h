@@ -89,26 +89,26 @@ class DslashTransform{
       // Launch the kernels  
       launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);
     }
-
+    
     template<bool dagger>
-    requires ( std::remove_cvref_t<KernelArgs>::convert_args() == true )
-    void operator()(ParitySpinorField auto &out_block_spinor, const ParitySpinorField auto &in_block_spinor, const ParitySpinorField auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity ){    
+    requires ( std::remove_cvref_t<KernelArgs>::convert_args() == true )    
+    void operator()(BlockParitySpinorField auto &out_block_spinor, const BlockParitySpinorField auto &in_block_spinor, const BlockParitySpinorField auto &aux_block_spinor, auto&& post_transformer, const FieldParity parity){	    
       //Setup exe domain :
       auto ids = impl::cartesian_4d_view(out_block_spinor.GetCBDims());      
 
       //First, we need to convert to views all components in the block
       auto &&out_block_spinor_view    = out_block_spinor.ConvertToView();
-      const auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       
-      const auto &&aux_block_spinor_view    = aux_block_spinor.ConvertToView();               
+      auto &&in_block_spinor_view     = in_block_spinor.ConvertToView();       
+      auto &&aux_block_spinor_view    = aux_block_spinor.ConvertToView();               
 
       //Second, create a view for the whole block spinor container:
       auto &&out_view    = out_block_spinor_view.BlockView();
-      const auto &&in_view     = in_block_spinor_view.BlockView(); 
-      const auto &&aux_view    = aux_block_spinor_view.BlockView();         
-        
+      auto &&in_view     = in_block_spinor_view.BlockView(); 
+      auto &&aux_view    = aux_block_spinor_view.BlockView();         
+      
       //Finally, launch the kernel:
       launch_dslash<dagger>(out_view, in_view, aux_view, post_transformer, parity, ids);  
-    }    
+    }         
 };
 
 template<typename KernelArgs, template <typename Args> class Kernel, typename TransformParams>
@@ -123,8 +123,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     Mat(const KernelArgs &args, const TransformParams &param, const FieldParity parity = FieldParity::InvalidFieldParity) : DslashTransform<KernelArgs, Kernel>(args), param(param), parity(parity) {}
 
     template<bool dagger = false>
-    void DslashXpay(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){	    
-      // Check all arguments!      
+    void DslashXpay(ParitySpinorField auto &out, const ParitySpinorField auto &in, const ParitySpinorField auto &aux){
+    
       using SpinorTp = typename std::remove_cvref_t<decltype(out[0])>; 
       //
       constexpr int nDoF   = SpinorTp::Type() == FieldType::StaggeredSpinorFieldType? SpinorTp::Ncolor() : SpinorTp::Ncolor() * SpinorTp::Nspin();
@@ -151,6 +151,7 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     }
 
     template<bool dagger = false>
+    //ParitySpinorField auto &out, const ParitySpinorField auto &in not working with view for #1 
     void operator()(auto &&out, const auto &in){//why do we need rvalue ref here?
       // Check all arguments!      
       DslashXpay<dagger>(out, in, in);

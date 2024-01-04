@@ -67,11 +67,11 @@ int main(int argc, char **argv)
   
   std::array dims = {X, X, X, T};
   
-  //run_pmr_dslash_test(dslash_param, dims, niter, 0);
+  run_pmr_dslash_test(dslash_param, dims, niter, 0);
   //
-  constexpr int  N = 8;  
+  //constexpr int  N = 8;  
   //
-  run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter, 0);
+  //run_mrhs_pmr_dslash_test<N>(dslash_param, dims, niter, 0);
 
   // initialize the data
   bool verbose = true;
