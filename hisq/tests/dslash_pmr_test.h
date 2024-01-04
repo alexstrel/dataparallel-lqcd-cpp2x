@@ -171,7 +171,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
 template<int N>
 void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, const int test_type) {
   //
-  const int vol = dims[0]*dims[1]*dims[2]*dims[3];
+  const int vol = dims[0]*dims[1]*dims[2]*dims[3] / 2;
   //
   auto gflop = (( (2*num_dir*mv_flops + (2*num_dir-1)*2*3 /*accumulation*/ + 2*2*3 /*xpay flops*/)*vol)) * 1e-9;//gflops per component
   //
@@ -184,9 +184,9 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   //
   const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
   //
-  auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  GaugeField auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
 
-  auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
+  GaugeField auto long_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
 #if 0
   constructFatLongGaugeField<1, 2>(fat_lnks, long_lnks, 0.5, 5.0, test_type);
 #else
@@ -196,13 +196,13 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
 
   constexpr bool copy_gauge = true;
      
-  auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
+  GaugeField auto sloppy_fat_lnks  = create_field<decltype(fat_lnks), sloppy_vector_tp, copy_gauge>(fat_lnks);   
 
-  auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);
+  GaugeField auto sloppy_long_lnks = create_field<decltype(long_lnks), sloppy_vector_tp, copy_gauge>(long_lnks);
   //
   // Setup dslash arguments:
-  auto &&fl_ref  = sloppy_fat_lnks.View();
-  auto &&ll_ref  = sloppy_long_lnks.View();
+  GaugeField auto &&fl_ref  = sloppy_fat_lnks.View();
+  GaugeField auto &&ll_ref  = sloppy_long_lnks.View();
 
   using sloppy_gauge_tp = decltype(sloppy_fat_lnks.View());
 
@@ -215,12 +215,12 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   //
   using sloppy_pmr_spinor_t  = Field<sloppy_pmr_vector_tp, decltype(cs_param)>;//
 
-  auto src_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N); 
-  auto chk_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N);
+  BlockParitySpinorField auto src_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N); 
+  BlockParitySpinorField auto chk_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N);
 
   for (int i = 0; i < src_block_spinor.nComponents(); i++) init_spinor( src_block_spinor.v[i] );
   
-  auto dst_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N);  
+  BlockParitySpinorField auto dst_block_spinor = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param) >(cs_param, N);  
   //
   if constexpr (do_warmup) {
     mat(dst_block_spinor, src_block_spinor);    
@@ -253,8 +253,8 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
 
-  auto src_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
-  auto dst_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
+  BlockParitySpinorField auto src_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
+  BlockParitySpinorField auto dst_block_spinor_v2 = create_block_spinor< sloppy_pmr_spinor_t, decltype(cs_param)>(cs_param, N);
   
   wall_start = std::chrono::high_resolution_clock::now();
 
