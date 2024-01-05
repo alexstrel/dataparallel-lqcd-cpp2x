@@ -12,14 +12,14 @@
 
 // Custom concepts for both single and block spinors:
 template<typename T> concept ParitySpinorField = GenericStaggeredParitySpinorFieldTp<T> or GenericBlockStaggeredParitySpinorFieldTp<T>;
-//
+
 template<typename T> concept GenericParitySpinorFieldView = StaggeredParitySpinorFieldViewTp<T> or BlockStaggeredParitySpinorFieldViewTp<T>;
 
 template<typename T> concept FullSpinorField   = GenericStaggeredFullSpinorFieldTp<T> or GenericBlockStaggeredFullSpinorFieldTp<T>;
 
 template<typename T> concept BlockSpinorField  = GenericBlockStaggeredFullSpinorFieldTp<T>;
-//
-template<typename T> concept BlockParitySpinorField = GenericBlockStaggeredFullSpinorFieldTp<T>;
+
+template<typename T> concept BlockParitySpinorField = GenericBlockStaggeredParitySpinorFieldTp<T>;
 
 template<typename T> concept GaugeField = GenericGaugeFieldTp<T> and requires { requires (T::Nparity() == 2); };
 
@@ -151,8 +151,8 @@ class Mat : public DslashTransform<KernelArgs, Kernel> {
     }
 
     template<bool dagger = false>
-    //ParitySpinorField auto &out, const ParitySpinorField auto &in not working with view for #1 
-    void operator()(auto &&out, const auto &in){//why do we need rvalue ref here?
+    //not working with direct pass of a view for #1 ??
+    void operator()(ParitySpinorField auto &out, const ParitySpinorField auto &in){
       // Check all arguments!      
       DslashXpay<dagger>(out, in, in);
     }  

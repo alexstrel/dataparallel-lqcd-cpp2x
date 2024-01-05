@@ -65,7 +65,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   GaugeField auto &&ll_ref  = sloppy_long_lnks.View();
 
   constexpr bool do_arg_conversion = true;
-  constexpr bool is_improved       = false;
+  constexpr bool is_improved       = true;
 
   using sloppy_gauge_tp = decltype(sloppy_fat_lnks.View());
 
@@ -78,7 +78,7 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   // Create dslash matrix
   auto mat = Mat<decltype(hisq_args), StaggeredDslash, decltype(params)>{hisq_args, params, parity};  
   //
-  const bool do_warmup = true; 
+  const bool do_warmup = false; 
   //
   if (do_warmup) {
     mat(dst_spinor, src_spinor.Even());
@@ -136,9 +136,13 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
 
   wall_start = std::chrono::high_resolution_clock::now();   
 
+  ParitySpinorField auto &&dst_2_view = dst_spinor_v2.View();//but direct passing of a view as a non-const argument fails!  
+
+  const ParitySpinorField auto &&src_2_view = src_spinor_v2.Even();
+
   for(int i = 0; i < niter; i++) {
     // Apply dslash	  
-    mat(dst_spinor_v2.View(), src_spinor_v2.Even());
+    mat(dst_2_view, src_2_view);
   }
   
   wall_stop = std::chrono::high_resolution_clock::now();
@@ -178,9 +182,11 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   constexpr int nSpinorParity = 1;
   constexpr int nGaugeParity  = 2;
   // 
-  constexpr bool do_warmup = true; 
+  constexpr bool do_warmup = true;
+  // 
+  decltype(dims) parity_dims{dims[0] /2, dims[1], dims[2], dims[3]}; 
   //
-  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{dims,FieldParity::EvenFieldParity};
+  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{parity_dims,FieldParity::EvenFieldParity};
   //
   const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
   //
