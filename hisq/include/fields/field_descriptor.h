@@ -36,10 +36,33 @@ class FieldDescriptor {
       
       std::array dir_{src_dir};
       
-      if constexpr (dst_nParity == 1 and src_nParity == 2) dir_[0] /= 2;
+      if      constexpr (dst_nParity == 1 and src_nParity == 2) dir_[0] /= 2;
+      else if constexpr (dst_nParity == 2 and src_nParity == 1) dir_[0] *= 2;      
       
       return dir_;
     }
+    
+    template <FieldType type, std::size_t nExtra, bool adjust_dir = true>
+    static auto get_strides(const auto &d){
+      const int d0 = adjust_dir ? (nParity == 2 ? d[0] / 2 : d[0]) : d[0];
+      std::array<std::size_t, nDim+nExtra> strides{1, d0, d0*d[1], d0*d[1]*d[2], d0*d[1]*d[2]*d[3]};
+
+      if constexpr (nParity == 2) {
+        if constexpr (type == FieldType::VectorFieldType) {
+          strides[nDim+1] =  strides[nDim+0]*nColor;                                                  
+          strides[nDim+2] =  strides[nDim+1]*nColor; 
+          strides[nDim+3] =  strides[nDim+2]*nDir;                             
+        } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
+          strides[nDim+1] =  strides[nDim+0]*nColor;                                                                            
+        }
+      } else if constexpr (nParity == 1) {
+        if constexpr (type == FieldType::VectorFieldType) {
+          strides[nDim+1] =  strides[nDim+0]*nColor;                                                  
+          strides[nDim+2] =  strides[nDim+1]*nColor;                                                                              
+        }
+      } 
+      return strides;
+    }    
     
   public: 
     static constexpr std::size_t ndim   = nDim;                    // FIXME
@@ -79,26 +102,7 @@ class FieldDescriptor {
 	            parity(parity), 
 		    bc(bc),
                     pmr_buffer(nullptr), 
-                    mdStrides([&d = dir]()->std::array<std::size_t, ndim+nExtra> {
-                        const int d0 = nparity == 2 ? d[0] / 2 : d[0];
-                        std::array<std::size_t, ndim+nExtra> strides{1, d0, d0*d[1], d0*d[1]*d[2], d0*d[1]*d[2]*d[3]};
-
-                        if constexpr (nparity == 2) {
-                          if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
-                            strides[ndim+2] =  strides[ndim+1]*ncolor; 
-                            strides[ndim+3] =  strides[ndim+2]*ndir;                             
-                          } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                                            
-                          }
-                        } else if constexpr (nparity == 1) {
-                          if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
-                            strides[ndim+2] =  strides[ndim+1]*ncolor;                                                                              
-                          }
-                        } 
-                        return strides;
-                      }()) {
+                    mdStrides(get_strides<type,nExtra>(dir)) {
                     } 
                     
     template<typename Args>
@@ -108,26 +112,7 @@ class FieldDescriptor {
 	            parity(parity),
 		    bc(args.bc),
                     pmr_buffer(args.pmr_buffer), 
-                    mdStrides([&d = this->dir]()->std::array<std::size_t, ndim+nExtra> {
-                        const int d0 = nparity == 2 ? d[0] / 2 : d[0];
-                        std::array<std::size_t, ndim+nExtra> strides{1, d0, d0*d[1], d0*d[1]*d[2], d0*d[1]*d[2]*d[3]};
-
-                        if constexpr (nparity == 2) {
-                          if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
-                            strides[ndim+2] =  strides[ndim+1]*ncolor; 
-                            strides[ndim+3] =  strides[ndim+2]*ndir;                               
-                          } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                                            
-                          }
-                        } else if constexpr (nparity == 1) {
-                          if constexpr (type == FieldType::VectorFieldType) {
-                            strides[ndim+1] =  strides[ndim+0]*ncolor;                                                  
-                            strides[ndim+2] =  strides[ndim+1]*ncolor;                                                                              
-                          }
-                        } 
-                        return strides;
-                      }()) {
+                    mdStrides(get_strides<type,nExtra,false>(dir)) {
                     } 
 
     //Use it for block fields only:
