@@ -112,7 +112,7 @@ class Field{
     static consteval FieldType   Type()    { return Arg::type;    }                             
 
   private: 
-    const Arg arg;//copy of the arguments  
+    const Arg arg;//copy of the field arguments  
     
     mutable container_tp v;//WARNING: edit it
 
@@ -180,16 +180,18 @@ class Field{
     }
 
     decltype(auto) ExportArg() const { return Arg{arg}; }
-    
+
     decltype(auto) ExportParityArg(const FieldParity parity) const { 
     
       if constexpr ( Nparity() == 1 ){
         std::quick_exit( EXIT_FAILURE );
       }
+
+      using ParityFieldDescriptor = typename Arg::ParityFieldDescriptor;
       //
       constexpr std::size_t nparity = 1;
       //
-      return FieldDescriptor<Ndim(), Ndir(), Nspin(), Ncolor(), nparity>(this->arg, parity); 
+      return ParityFieldDescriptor(this->arg, parity); 
     }
 
     auto Begin() { return v.begin(); }
@@ -217,13 +219,13 @@ class Field{
         std::cerr << "Cannot get a parity component from a non-full field, exiting...\n" << std::endl;
 	std::quick_exit( EXIT_FAILURE );
       }
-      //           
-      constexpr std::size_t nparity = 1;
-      
-      const auto parity_arg = FieldDescriptor<Ndim(), Ndir(), Nspin(), Ncolor(), nparity>(this->arg, parity);
       //
+      using ParityFieldDescriptor = typename Arg::ParityFieldDescriptor;
+
       const auto parity_length = GetParityLength();
       const auto parity_offset = parity == FieldParity::EvenFieldParity ? 0 : parity_length;
+ 
+      const auto parity_arg = ParityFieldDescriptor(this->arg, parity);
 
       return Field<std::span<data_tp>, decltype(parity_arg)>(std::span{v}.subspan(parity_offset, parity_length), parity_arg);
     }
