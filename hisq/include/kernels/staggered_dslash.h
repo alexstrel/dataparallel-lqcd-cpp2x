@@ -50,7 +50,7 @@ class StaggeredDslash{
     StaggeredDslash(const Arg &args) : args(args) {}        
 
     template<bool dagger>
-    inline decltype(auto) compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X){
+    inline auto compute_parity_site_stencil(const auto &in, const FieldParity parity, auto &X) const -> decltype(auto){
     
       using Link   = ArgTp::LinkTp; 
       using Spinor = typename std::remove_cvref_t<decltype(in)>::SpinorTp;

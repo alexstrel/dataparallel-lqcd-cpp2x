@@ -47,7 +47,7 @@ class FieldAccessor {
 
     template<std::size_t... Idxs, FieldType type = F::Type()>
     requires (type == FieldType::StaggeredSpinorFieldType)
-    inline decltype(auto) load_parity_spinor(std::index_sequence<Idxs...>, const RangesTp auto& x) const {  
+    inline auto load_parity_spinor(std::index_sequence<Idxs...>, const RangesTp auto& x) const -> decltype(auto) {  
     
       using idx_type = decltype(x[0]);    
     
@@ -68,13 +68,13 @@ class FieldAccessor {
     
     template<FieldType field_type = F::type()>
     requires (field_type == FieldType::StaggeredSpinorFieldType)        
-    inline decltype(auto) operator()(const RangesTp auto &x) const {
+    inline auto operator()(const RangesTp auto &x) const ->decltype(auto) {
       return load_parity_spinor(Indices{}, x);    
     }
 
     template<std::size_t... Idxs, FieldType field_type = F::Type()>
     requires (field_type == FieldType::VectorFieldType)
-    inline decltype(auto) load_parity_link(std::index_sequence<Idxs...>, const RangesTp auto& x, const int &d, const int &parity) const {
+    inline auto load_parity_link(std::index_sequence<Idxs...>, const RangesTp auto& x, const int &d, const int &parity) const -> decltype(auto) {
 
       using idx_type = decltype(x[0]); 
       
@@ -98,7 +98,7 @@ class FieldAccessor {
     
     template<FieldType field_type = F::type()>
     requires (field_type == FieldType::VectorFieldType)
-    inline decltype(auto) operator()(const RangesTp auto &x, const int &d, const int &p) const {
+    inline auto operator()(const RangesTp auto &x, const int &d, const int &p) const -> decltype(auto) {
       return load_parity_link(Indices{}, x, d, p);
     }
 
