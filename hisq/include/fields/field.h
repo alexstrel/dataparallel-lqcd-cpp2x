@@ -189,8 +189,6 @@ class Field{
 
       using ParityFieldDescriptor = typename Arg::ParityFieldDescriptor;
       //
-      constexpr std::size_t nparity = 1;
-      //
       return ParityFieldDescriptor(this->arg, parity); 
     }
 

@@ -64,7 +64,9 @@ class FieldDescriptor {
       return strides;
     }    
     
-  public: 
+  public:
+    using ParityFieldDescriptor = FieldDescriptor<nDim, nDir, nSpin, nColor, 1>;
+
     static constexpr std::size_t ndim   = nDim;                    // FIXME
     //
     static constexpr std::size_t ndir   = nDir;                    //vector field dim   (2 for U1 gauge)	  
