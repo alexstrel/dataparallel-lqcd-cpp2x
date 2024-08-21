@@ -13,7 +13,7 @@ decltype(auto) create_field(const Arg &arg) {
   return Field<alloc_container_tp, Arg>(arg);
 }
 
-template <PMRStaggeredSpinorFieldTp field_tp, PMRContainerTp dst_container_tp = field_tp::container_tp, bool do_copy = false, bool is_exclusive = true>
+template <PMRStaggeredSpinorFieldTp field_tp, PMRContainerTp dst_container_tp = field_tp::container_tp, bool do_copy = false>
 decltype(auto) create_field_with_buffer(field_tp &src) {
   //
   using src_container_tp = field_tp::container_tp;
@@ -25,7 +25,7 @@ decltype(auto) create_field_with_buffer(field_tp &src) {
   //
   auto arg = ArgTp{src.ExportArg()};//need new arg structure
   
-  arg.template RegisterPMRBuffer<dst_data_tp, is_exclusive>();  
+  arg.template RegisterPMRBuffer<dst_data_tp>();  
   
   auto& pmr_pool_handle = *arg.pmr_buffer->Pool();//?
   //
@@ -73,14 +73,14 @@ decltype(auto) create_field(field_tp &src) {
   return dst;
 }
 
-template <PMRContainerTp pmr_container_tp, typename Arg, bool is_exclusive = true>
-decltype(auto) create_field_with_buffer(const Arg &arg_, const bool use_reserved = false) {
+template <PMRContainerTp pmr_container_tp, typename Arg, bool use_reserved = false>
+decltype(auto) create_field_with_buffer(const Arg &arg_) {
   using data_tp = pmr_container_tp::value_type;
 
   auto arg = Arg{arg_};
 
-  if ( not use_reserved) {// if not use a reserved buffer, register new one
-    arg.template RegisterPMRBuffer<data_tp, is_exclusive>();
+  if constexpr ( not use_reserved) {// if not use a reserved buffer, register new one
+    arg.template RegisterPMRBuffer<data_tp>();
   } else {
   // use reserved, e.g., by a block field constructor, 
   // arg must have a valid pmr_buffer with PMRStatus::Reserved
@@ -89,8 +89,6 @@ decltype(auto) create_field_with_buffer(const Arg &arg_, const bool use_reserved
       std::quick_exit( EXIT_FAILURE );   
     }
   }
-  
-  if ( not arg.IsExclusive() ) std::cout << "Warning: creating non-exclusive PMR field." << std::endl;
 
   auto& pmr_pool_handle = *arg.pmr_buffer->Pool();
 
@@ -123,7 +121,7 @@ class Field{
     template<PMRContainerTp T = container_tp>
     explicit Field(const Arg &arg_) : arg( [src_arg = arg_]()->Arg {
                                              auto dst_arg = Arg{src_arg};
-                                             dst_arg.template RegisterPMRBuffer<data_tp, true>();
+                                             dst_arg.template RegisterPMRBuffer<data_tp>();
                                              return dst_arg;}() ),
                                       v(arg.GetFieldSize(), &(*arg.pmr_buffer->Pool())){ }
 
@@ -138,8 +136,8 @@ class Field{
     template <FieldTp field_tp, ContainerTp container_tp, bool do_copy>
     friend decltype(auto) create_field(field_tp &src);
 
-    template <PMRContainerTp pmr_container_tp, typename ArgTp, bool is_exclusive>
-    friend decltype(auto) create_field_with_buffer(const ArgTp &arg_, const bool use_reserved);
+    template <PMRContainerTp pmr_container_tp, typename ArgTp, bool use_reserved>
+    friend decltype(auto) create_field_with_buffer(const ArgTp &arg_);
     
     template <PMRStaggeredSpinorFieldTp field_tp, PMRContainerTp container_tp, bool do_copy>
     friend decltype(auto) create_field_with_buffer(field_tp &src);    

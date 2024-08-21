@@ -76,41 +76,36 @@ class PMRBuffer{
     //
     auto Pool()  const { return pmr_pool;  } 
     
-    bool IsExclusive() const { return (pmr_state == PMRState::LockedExclusive or pmr_state == PMRState::ReservedExclusive); }           
+    // rename to IsVacant ...
+    bool IsExclusive() const { return (pmr_state == PMRState::Locked or pmr_state == PMRState::Reserved); }           
     
     void SetState(PMRState state) { pmr_state = state; }
     
     void ResetPool() const {  pmr_pool->release(); } 
     
-    bool IsReserved(const std::size_t nbytes) const {  
+    bool IsReserved(const std::size_t nbytes) const { //better name : IsAvailable(...) const 
       if (pmr_ptr != nullptr ) {
-        if (pmr_state != PMRState::ReservedExclusive and pmr_state != PMRState::ReservedShared and pmr_state != PMRState::ReservedNonExclusive) {
-          return false;
-        }
-        //
-        return (nbytes <= pmr_base_bytes);
+        if (pmr_state != PMRState::Reserved)  return false; 
+	else                                           return (nbytes <= pmr_base_bytes);
       } 
-      //
+      // default is 'false'
       return false;
     } 
     
-    // Simply return the state:
-    bool IsReserved() const { return ((pmr_state == PMRState::ReservedExclusive) or (pmr_state == PMRState::ReservedShared) or (pmr_state == PMRState::ReservedNonExclusive));}
+    // Simply checks the reservation status ('true/false'):
+    bool IsReserved() const { return (pmr_state == PMRState::Reserved); }
     
-    void UpdateReservedState() {  if      (pmr_state == PMRState::ReservedExclusive)     pmr_state = PMRState::LockedExclusive;
-                                  else if (pmr_state == PMRState::ReservedShared)        pmr_state = PMRState::Shared;
-                                  else if (pmr_state == PMRState::ReservedNonExclusive)  pmr_state = PMRState::LockedNonExclusive;                                  
-                                  else                                                   pmr_state = PMRState::InvalidState; }       
+    void UpdateReservedState() {  if      (pmr_state == PMRState::Reserved)  pmr_state = PMRState::Locked;
+                                  else                                       pmr_state = PMRState::InvalidState; 
+                               }       
     
     void Release() {
 
       if(IsReserved()) { return; } //if reserved , just nop
 
-      if      (pmr_state == PMRState::LockedNonExclusive)    pmr_state = PMRState::Shared;
-      else                                                   pmr_state = PMRState::Vacant;//PMRState::LockedExclusive
+      pmr_state = PMRState::Vacant;//PMRState::Locked
 
-      pmr_pool->release();
-      //      
+      pmr_pool->release();      
     }
                
     void Destroy() {  
@@ -273,12 +268,9 @@ namespace pmr_pool
   
   static bool pmr_memory_pool = false;   
 
-  template<bool is_exclusive = true>
-  decltype(auto) pmr_malloc(const std::size_t nbytes, const bool is_reserved = false) {
+  template<bool is_reserved = false>
+  decltype(auto) pmr_malloc(const std::size_t nbytes) {
   
-    PMRState final_buffer_state = is_reserved ? (is_exclusive ? PMRState::ReservedExclusive  : PMRState::ReservedShared) 
-                                              : (is_exclusive ? PMRState::LockedExclusive    : PMRState::Shared        ); 
-     
     if( pmr_memory_pool == false ) { 
       pmrBuffers.reserve(max_n_buffers);
       //
@@ -287,21 +279,15 @@ namespace pmr_pool
 
     // state filter :
     auto select_pmr_buffer = [] (const auto &p) {
-      auto &pmrb = p.second;
-      return ( ((pmrb->State() == PMRState::Vacant) or (pmrb->State() == PMRState::Shared and not is_exclusive)) and (pmrb->State() != PMRState::ReservedExclusive and pmrb->State() != PMRState::ReservedShared and pmrb->State() != PMRState::ReservedNonExclusive) ); 
-    };   
+                               auto &pmrb = p.second;
+                               return ( pmrb->State() == PMRState::Vacant ); 
+                             };   
 
     // state transformation:
-    auto transform_pmr_buffer_state = [=, &is_reserved, &final_buffer_state] (const auto &pmrb) mutable {
-      if ( pmrb->State() == PMRState::Shared ) { /*this is a shared buffer*/
-        pmrb->ResetPool();
-        /* we locked buffer if it's not reserved: */
-        if (not is_reserved) final_buffer_state = PMRState::LockedNonExclusive;
-        else                 final_buffer_state = PMRState::ReservedNonExclusive;
-      } /*otherwise an initial state was vacant, amd we can keep the origin values of final_buffer_state*/
-
-      pmrb->SetState( final_buffer_state );
-    };
+    auto transform_pmr_buffer_state = [=, reserved = is_reserved] (const auto &pmrb) mutable {
+	                                PMRState final_state = reserved ? PMRState::Reserved : PMRState::Locked;
+                                        pmrb->SetState( final_state );
+                                      };
    
     if ( not pmrCachedBuffers.empty() ) {//if buffer is not empty... 
       auto buffer_range = pmrCachedBuffers.equal_range(nbytes);      
@@ -313,16 +299,16 @@ namespace pmr_pool
         if ( not selected_pmr_buffers.empty() ) {
 
           auto p = *std::ranges::begin(selected_pmr_buffers);
-          auto& [bytes, pmr_buffer] = p;
+          auto& [bytes, selected_pmr_buffer] = p;
 
-          transform_pmr_buffer_state(pmr_buffer);
+          transform_pmr_buffer_state(selected_pmr_buffer);
 
-          return pmr_buffer;
+          return selected_pmr_buffer;
         }
       }
     }
     //
-    pmrBuffers.emplace_back(std::make_shared<PMRBuffer>(nbytes, final_buffer_state));
+    pmrBuffers.emplace_back(std::make_shared<PMRBuffer>(nbytes, is_reserved ? PMRState::Reserved : PMRState::Locked));
     //
     auto pmr_buffer = pmrBuffers.back();
     //

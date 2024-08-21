@@ -2,10 +2,10 @@
 
 #include <memory_resource>
 
-template<GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive>
+template<GenericSpinorFieldTp spinor_tp, typename Arg>
 class BlockSpinor; // forward declare to make function definition possible
 
-template <GenericSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive = true>
+template <GenericSpinorFieldTp spinor_tp, typename Arg>
 decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offset for block spinor
 
   using container_tp  = spinor_tp::container_tp;
@@ -14,13 +14,13 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   if constexpr ( is_pmr_allocator_aware_type<container_tp> ) {
     const std::size_t pmr_bytes = (arg_.GetFieldSize()+arg_.GetGhostZoneSize())*sizeof(data_tp)*n;
 
-    const bool reserved = true;
+    constexpr bool reserved = true;
     
-    auto pmr_buffer = pmr_pool::pmr_malloc<is_exclusive>(pmr_bytes, reserved);
+    auto pmr_buffer = pmr_pool::pmr_malloc<reserved>(pmr_bytes);
     //
     auto pmr_arg = Arg{arg_, pmr_buffer};
     //
-    return BlockSpinor<spinor_tp, Arg, is_exclusive>(pmr_arg, n, reserved);
+    return BlockSpinor<spinor_tp, Arg>(pmr_arg, n, reserved);
   } else {
     auto arg = Arg{arg_};
   
@@ -28,7 +28,7 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   }
 }
 
-template<GenericSpinorFieldTp spinor_t, typename SpinorArg, bool is_exclusive = true>
+template<GenericSpinorFieldTp spinor_t, typename SpinorArg>
 class BlockSpinor{
   public:	
     using block_container_tp = std::vector<spinor_t> ;
@@ -57,7 +57,7 @@ class BlockSpinor{
       v.reserve(n);
 
       for(int i = 0; i < n; i++) {
-        v.push_back(create_field_with_buffer<container_tp, SpinorArg, is_exclusive>(args, is_reserved));
+        v.push_back(create_field_with_buffer<container_tp, SpinorArg>(args, is_reserved));
       }
       //
       args.UpdatedReservedPMR();//now locked
@@ -73,7 +73,7 @@ class BlockSpinor{
 
       const std::size_t n = nComponents();
 
-      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args, n};
+      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args)>{args, n};
 
       auto&& src_v = block_spinor_view.Get();
 
@@ -94,7 +94,7 @@ class BlockSpinor{
 
       const std::size_t n = nComponents();
 
-      auto block_spinor_parity_view = BlockSpinor<spinor_parity_view_t, decltype(args), is_exclusive>{args, n};
+      auto block_spinor_parity_view = BlockSpinor<spinor_parity_view_t, decltype(args)>{args, n};
 
       auto&& src_v = block_spinor_parity_view.Get();
 

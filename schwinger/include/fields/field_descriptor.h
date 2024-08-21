@@ -75,8 +75,7 @@ class FieldDescriptor {
     FieldDescriptor(const std::array<int, ndim> dir, 
                     const std::array<int, ndim> comm_dir,  
 	            const FieldParity     parity   = FieldParity::InvalidFieldParity,
-	            const FieldOrder      order    = FieldOrder::EOFieldOrder,	            
-	            const bool is_exclusive        = true) : 
+	            const FieldOrder      order    = FieldOrder::EOFieldOrder) : 
 	            dir{dir},
 	            order(order),
 	            parity(parity), 
@@ -179,14 +178,14 @@ class FieldDescriptor {
 
     inline auto& GetGhostMDStrides() const { return ghost_descriptor.GetGhostMDStrides(); }     
   
-    template<ArithmeticTp T, bool is_exclusive = true>
-    void RegisterPMRBuffer(const bool is_reserved = false) {  
+    template<ArithmeticTp T, bool is_reserved = false>
+    void RegisterPMRBuffer( ) {  
       // 
       const std::size_t nbytes = (GetFieldSize()+GetGhostZoneSize())*sizeof(T);
       //
       if (pmr_buffer != nullptr) pmr_buffer.reset(); 
       //
-      pmr_buffer = pmr_pool::pmr_malloc<is_exclusive>(nbytes, is_reserved);
+      pmr_buffer = pmr_pool::pmr_malloc<is_reserved>(nbytes);
     }    
 
     void UnregisterPMRBuffer() {

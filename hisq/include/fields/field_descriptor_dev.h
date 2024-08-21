@@ -125,7 +125,7 @@ class FieldDescriptor {
       //
       if (pmr_buffer != nullptr) pmr_buffer.reset(); 
       //
-      pmr_buffer = pmr_pool::pmr_malloc<is_exclusive>(nbytes, is_reserved);
+      pmr_buffer = pmr_pool::pmr_malloc(nbytes, is_reserved);
     }    
 
     void UnregisterPMRBuffer() {

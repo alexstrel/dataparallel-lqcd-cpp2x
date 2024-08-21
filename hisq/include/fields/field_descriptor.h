@@ -97,8 +97,7 @@ class FieldDescriptor {
     FieldDescriptor(const std::array<int, ndim> dir, 
 	            const FieldParity     parity   = FieldParity::InvalidFieldParity,
 	            const FieldOrder      order    = FieldOrder::EOFieldOrder,
-                    const FieldBoundary   bc       = FieldBoundary::InvalidBC,		    
-	            const bool is_exclusive        = true) : 
+                    const FieldBoundary   bc       = FieldBoundary::InvalidBC) : 
 	            dir{dir},
 	            order(order),
 	            parity(parity), 
@@ -164,14 +163,14 @@ class FieldDescriptor {
  
     inline auto& GetMDStrides()      const { return mdStrides; }
   
-    template<ArithmeticTp T, bool is_exclusive = true>
-    void RegisterPMRBuffer(const bool is_reserved = false) {  
+    template<ArithmeticTp T, bool is_reserved = false>
+    void RegisterPMRBuffer( ) {  
       // 
       const std::size_t nbytes = (GetFieldSize())*sizeof(T);
       //
       if (pmr_buffer != nullptr) pmr_buffer.reset(); 
       //
-      pmr_buffer = pmr_pool::pmr_malloc<is_exclusive>(nbytes, is_reserved);
+      pmr_buffer = pmr_pool::pmr_malloc<is_reserved>(nbytes);
     }    
 
     void UnregisterPMRBuffer() {

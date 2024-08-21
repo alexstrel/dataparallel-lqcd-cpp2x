@@ -2,10 +2,10 @@
 
 #include <memory_resource>
 
-template<GenericStaggeredSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive>
+template<GenericStaggeredSpinorFieldTp spinor_tp, typename Arg,  bool reserved>
 class BlockSpinor; // forward declare to make function definition possible
 
-template <GenericStaggeredSpinorFieldTp spinor_tp, typename Arg, bool is_exclusive = true>
+template <GenericStaggeredSpinorFieldTp spinor_tp, typename Arg>
 decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offset for block spinor
 
   using container_tp  = spinor_tp::container_tp;
@@ -14,13 +14,13 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   if constexpr ( is_pmr_allocator_aware_type<container_tp> ) {
     const std::size_t pmr_bytes = (arg_.GetFieldSize())*sizeof(data_tp)*n;
 
-    const bool reserved = true;
+    constexpr bool reserved = true;
     
-    auto pmr_buffer = pmr_pool::pmr_malloc<is_exclusive>(pmr_bytes, reserved);
+    auto pmr_buffer = pmr_pool::pmr_malloc<reserved>(pmr_bytes);
     //
     auto pmr_arg = Arg{arg_, pmr_buffer};
     //
-    return BlockSpinor<spinor_tp, Arg, is_exclusive>(pmr_arg, n, reserved);
+    return BlockSpinor<spinor_tp, Arg, reserved>(pmr_arg, n);
   } else {
     auto arg = Arg{arg_};
   
@@ -28,7 +28,7 @@ decltype(auto) create_block_spinor(const Arg &arg_, const std::size_t n) {//offs
   }
 }
 
-template<GenericStaggeredSpinorFieldTp spinor_t, typename SpinorArg, bool is_exclusive = true>
+template<GenericStaggeredSpinorFieldTp spinor_t, typename SpinorArg, bool reserved = false>
 class BlockSpinor{
   public:	
     using block_container_tp = std::vector<spinor_t> ;
@@ -52,13 +52,13 @@ class BlockSpinor{
     }
     
     template<PMRStaggeredSpinorFieldTp T = spinor_t>
-    BlockSpinor(const SpinorArg &args_, const std::size_t n, const bool is_reserved) : args(args_) {
+    BlockSpinor(const SpinorArg &args_, const std::size_t n) : args(args_) {
       using data_tp = container_tp::value_type;;
 
       v.reserve(n);
 
       for(int i = 0; i < n; i++) {
-        v.push_back(create_field_with_buffer<container_tp, SpinorArg, is_exclusive>(args, is_reserved));
+        v.push_back(create_field_with_buffer<container_tp, SpinorArg, reserved>(args));
       }
       //
       args.UpdatedReservedPMR();//now locked
@@ -68,7 +68,7 @@ class BlockSpinor{
     BlockSpinor(const SpinorArg &args_, const std::size_t n) : args(args_) { v.reserve(n); }    
 
     decltype(auto) ConvertToView() {
-      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args, nComponents()};
+      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args)>{args, nComponents()};
 
       auto&& src_v = block_spinor_view.Get();
 
@@ -78,7 +78,7 @@ class BlockSpinor{
     }
     
     decltype(auto) ConvertToView() const {
-      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args), is_exclusive>{args,  nComponents()};
+      auto block_spinor_view = BlockSpinor<spinor_view_t, decltype(args)>{args,  nComponents()};
 
       auto&& src_v = block_spinor_view.Get();
 
@@ -99,7 +99,7 @@ class BlockSpinor{
 
       const std::size_t n = nComponents();
 
-      auto block_spinor_parity_view = BlockSpinor<spinor_parity_view_t, decltype(args), is_exclusive>{args, n};
+      auto block_spinor_parity_view = BlockSpinor<spinor_parity_view_t, decltype(args)>{args, n};
 
       auto&& src_v = block_spinor_parity_view.Get();
 
