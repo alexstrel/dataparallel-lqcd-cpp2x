@@ -27,27 +27,27 @@ consteval FieldType get_field_type() {
   return FieldType::InvalidFieldType;
 }
 
-template<std::size_t nDim, std::size_t nDir = invalid_dir, std::size_t nSpin = invalid_spin, std::size_t nColor = invalid_color, std::size_t nParity = invalid_parity>
+template<FieldSiteSubset field_site_subset, std::size_t nDim, std::size_t nDir = invalid_dir, std::size_t nSpin = invalid_spin, std::size_t nColor = invalid_color>
 class FieldDescriptor {
   private:
-    template <std::size_t src_nParity>
-    static auto get_dims(const auto &src_dir){
-      constexpr std::size_t dst_nParity = nParity; 
+    template <FieldSiteSubset src_site_subset>
+    static auto get_dims(const auto &src_dim){
+      constexpr FieldSiteSubset dst_site_subset = field_site_subset; 
       
-      std::array dir_{src_dir};
+      std::array dim_{src_dim};
       
-      if      constexpr (dst_nParity == 1 and src_nParity == 2) dir_[0] /= 2;
-      else if constexpr (dst_nParity == 2 and src_nParity == 1) dir_[0] *= 2;      
+      if      constexpr (dst_site_subset == FieldSiteSubset::ParitySiteSubset and src_site_subset == FieldSiteSubset::FullSiteSubset  ) dim_[0] /= 2;
+      else if constexpr (dst_site_subset == FieldSiteSubset::FullSiteSubset   and src_site_subset == FieldSiteSubset::ParitySiteSubset) dim_[0] *= 2;      
       
-      return dir_;
+      return dim_;
     }
     
-    template <FieldType type, std::size_t nExtra, bool adjust_dir = true>
+    template <FieldType type, std::size_t nExtra, bool adjust_dim = true>
     static auto get_strides(const auto &d){
-      const int d0 = adjust_dir ? (nParity == 2 ? d[0] / 2 : d[0]) : d[0];
+      const int d0 = adjust_dim ? (field_site_subset == FieldSiteSubset::FullSiteSubset ? d[0] / 2 : d[0]) : d[0];
       std::array<std::size_t, nDim+nExtra> strides{1, d0, d0*d[1], d0*d[1]*d[2], d0*d[1]*d[2]*d[3]};
 
-      if constexpr (nParity == 2) {
+      if constexpr (field_site_subset == FieldSiteSubset::FullSiteSubset) {
         if constexpr (type == FieldType::VectorFieldType) {
           strides[nDim+1] =  strides[nDim+0]*nColor;                                                  
           strides[nDim+2] =  strides[nDim+1]*nColor; 
@@ -55,7 +55,7 @@ class FieldDescriptor {
         } else if constexpr (type == FieldType::StaggeredSpinorFieldType){ //spinor
           strides[nDim+1] =  strides[nDim+0]*nColor;                                                                            
         }
-      } else if constexpr (nParity == 1) {
+      } else if constexpr (field_site_subset == FieldSiteSubset::ParitySiteSubset) {
         if constexpr (type == FieldType::VectorFieldType) {
           strides[nDim+1] =  strides[nDim+0]*nColor;                                                  
           strides[nDim+2] =  strides[nDim+1]*nColor;                                                                              
@@ -65,14 +65,16 @@ class FieldDescriptor {
     }    
     
   public:
-    using ParityFieldDescriptor = FieldDescriptor<nDim, nDir, nSpin, nColor, 1>;
+    using ParityFieldDescriptor = FieldDescriptor<FieldSiteSubset::ParitySiteSubset, nDim, nDir, nSpin, nColor>;
+    
+    static constexpr FieldSiteSubset site_sibset = field_site_subset;    
 
     static constexpr std::size_t ndim   = nDim;                    // FIXME
     //
     static constexpr std::size_t ndir   = nDir;                    //vector field dim   (2 for U1 gauge)	  
     static constexpr std::size_t nspin  = nSpin;                   //number of spin dof (2 for spinor)
     static constexpr std::size_t ncolor = nColor;                  //for all fields
-    static constexpr std::size_t nparity= nParity;                 //for all fields    
+    static constexpr std::size_t nparity= field_site_subset == FieldSiteSubset::FullSiteSubset ? 2 : 1;                 //for all fields    
 
     static constexpr FieldType  type = get_field_type<ndir, nspin, ncolor>();
 
@@ -80,7 +82,7 @@ class FieldDescriptor {
     //spinor field extra dimensions: color [ + parity, if par = 2 ]     
     static constexpr int nExtra      = type == FieldType::VectorFieldType ? (nparity == 2 ? 4 : 3) : (nparity == 2 ? 2 : 1);       
 
-    const std::array<int, ndim> dir;    
+    const std::array<int, ndim> dim;    
 
     const FieldOrder         order  = FieldOrder::InvalidFieldOrder;        		
     const FieldParity        parity = FieldParity::InvalidFieldParity;//this is optional param
@@ -94,32 +96,32 @@ class FieldDescriptor {
     FieldDescriptor(const FieldDescriptor& ) = default;
     FieldDescriptor(FieldDescriptor&& )      = default;
 
-    FieldDescriptor(const std::array<int, ndim> dir, 
+    FieldDescriptor(const std::array<int, ndim> dim, 
 	            const FieldParity     parity   = FieldParity::InvalidFieldParity,
 	            const FieldOrder      order    = FieldOrder::EOFieldOrder,
                     const FieldBoundary   bc       = FieldBoundary::InvalidBC) : 
-	            dir{dir},
+	            dim{dim},
 	            order(order),
 	            parity(parity), 
 		    bc(bc),
                     pmr_buffer(nullptr), 
-                    mdStrides(get_strides<type,nExtra>(dir)) {
+                    mdStrides(get_strides<type,nExtra>(dim)) {
                     } 
                     
     template<typename Args>
     FieldDescriptor(const Args &args, const FieldParity parity) : 
-                    dir(get_dims<std::remove_cvref_t<decltype(args)>::nparity>(args.dir)),
+                    dim(get_dims<std::remove_cvref_t<decltype(args)>::site_sibset>(args.dim)),
 	            order(args.order),
 	            parity(parity),
 		    bc(args.bc),
                     pmr_buffer(args.pmr_buffer), 
-                    mdStrides(get_strides<type,nExtra,false>(dir)) {
+                    mdStrides(get_strides<type,nExtra,false>(dim)) {
                     } 
 
     //Use it for block fields only:
     FieldDescriptor(const FieldDescriptor &args, 
                     const std::shared_ptr<PMRBuffer> extern_pmr_buffer) :
-                    dir(args.dir),
+                    dim(args.dim),
                     order(args.order),
                     parity(args.parity),
 		    bc(args.bc),
@@ -129,7 +131,7 @@ class FieldDescriptor {
     decltype(auto) GetFieldSize() const {
       int vol = 1; 
 #pragma unroll      
-      for(int i = 0; i < ndim; i++) vol *= dir[i];
+      for(int i = 0; i < ndim; i++) vol *= dim[i];
       
       if  constexpr (type == FieldType::ScalarFieldType) {
         return vol;
@@ -144,21 +146,21 @@ class FieldDescriptor {
       return static_cast<std::size_t>(0);
     } 
 
-    auto GetLatticeDims() const { return dir; }
+    auto GetLatticeDims() const { return dim; }
 
     auto GetParityLatticeDims() const {
-      std::array xcb{dir};
-      xcb[0] = nParity == 2 ? xcb[0] / nParity : xcb[0];	    
+      std::array xcb{dim};
+      xcb[0] = field_site_subset == FieldSiteSubset::FullSiteSubset ? xcb[0] / nparity : xcb[0];	    
       return xcb;
     }
     
     auto GetParity() const { return parity; }
     
-    auto GetFieldSubset() const { return (nParity == 2 ? FieldSiteSubset::FullSiteSubset : (nParity == 1 ? FieldSiteSubset::ParitySiteSubset : FieldSiteSubset::InvalidSiteSubset)); }
+    auto GetFieldSubset() const { return site_subset; }
 
-    inline int  X(const int i) const { return dir[i]; }
+    inline int  X(const int i) const { return dim[i]; }
     
-    inline auto X() const { return dir; }    
+    inline auto X() const { return dim; }    
     
  
     inline auto& GetMDStrides()      const { return mdStrides; }
@@ -227,7 +229,9 @@ constexpr std::size_t ndims   = 4;
 constexpr std::size_t ncolors = 3;
 constexpr std::size_t ndirs   = 4;
 
-template<int nParity = invalid_parity> using GaugeFieldArgs           = FieldDescriptor<ndims, ndirs, invalid_spin, ncolors, nParity>;
+template<FieldSiteSubset field_site_subset = FieldSiteSubset::InvalidSiteSubset> using GaugeFieldArgs           
+                                           = FieldDescriptor<field_site_subset, ndims, ndirs, invalid_spin, ncolors>;
 
-template<int nParity = invalid_parity> using StaggeredSpinorFieldArgs = FieldDescriptor<ndims, invalid_dir, invalid_spin, ncolors, nParity>;
+template<FieldSiteSubset field_site_subset = FieldSiteSubset::InvalidSiteSubset> using StaggeredSpinorFieldArgs 
+                                           = FieldDescriptor<field_site_subset, ndims, invalid_dir, invalid_spin, ncolors>;
 

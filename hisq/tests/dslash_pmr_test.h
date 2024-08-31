@@ -21,16 +21,18 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   //
   constexpr FieldParity parity   = FieldParity::EvenFieldParity;
   //
-  constexpr int nSrcSpinorParity = 2;
+  //constexpr int nSrcSpinorParity = 2;
+  constexpr FieldSiteSubset srcSpinorSubset = FieldSiteSubset::FullSiteSubset;
   //
-  constexpr int nGaugeParity     = 2;
+  //constexpr int nGaugeParity     = 2;
+  constexpr FieldSiteSubset gaugeSubset     = FieldSiteSubset::FullSiteSubset;  
   //
   constexpr bool clean_intermed_fields = true;
   //  
-  const auto src_cs_param = StaggeredSpinorFieldArgs<nSrcSpinorParity>{dims};
+  const auto src_cs_param = StaggeredSpinorFieldArgs<srcSpinorSubset>{dims};
   //
-  const auto gauge_param  = GaugeFieldArgs<nGaugeParity>{dims};
-
+  const auto gauge_param  = GaugeFieldArgs<gaugeSubset>{dims};  
+  
   // Create full precision gauge field:
   GaugeField auto fat_lnks  = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
   //
@@ -179,16 +181,19 @@ void run_mrhs_pmr_dslash_test(auto params, const auto dims, const int niter, con
   //
   auto gflop = (( (2*num_dir*mv_flops + (2*num_dir-1)*2*3 /*accumulation*/ + 2*2*3 /*xpay flops*/)*vol)) * 1e-9;//gflops per component
   //
-  constexpr int nSpinorParity = 1;
-  constexpr int nGaugeParity  = 2;
+  //constexpr int nSpinorParity = 1;
+  constexpr FieldSiteSubset srcSpinorSubset = FieldSiteSubset::ParitySiteSubset;
+  //
+  //constexpr int nGaugeParity  = 2;
+  constexpr FieldSiteSubset gaugeSubset     = FieldSiteSubset::FullSiteSubset;  
   // 
   constexpr bool do_warmup = true;
   // 
-  decltype(dims) parity_dims{dims[0] /2, dims[1], dims[2], dims[3]}; 
+  decltype(dims) parity_dims{dims[0]/2, dims[1], dims[2], dims[3]}; 
   //
-  const auto cs_param = StaggeredSpinorFieldArgs<nSpinorParity>{parity_dims,FieldParity::EvenFieldParity};
+  const auto cs_param = StaggeredSpinorFieldArgs<srcSpinorSubset>{parity_dims,FieldParity::EvenFieldParity};
   //
-  const auto gauge_param = GaugeFieldArgs<nGaugeParity>{dims};
+  const auto gauge_param = GaugeFieldArgs<gaugeSubset>{dims};
   //
   GaugeField auto fat_lnks = create_field<vector_tp, decltype(gauge_param)>(gauge_param);
 
