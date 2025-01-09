@@ -7,14 +7,14 @@
 #include <utils/gauge_utils.h>
 
 //
-using Float = double;
+using FloatT = float;
 
 void init_su3(auto &field){
-   for (auto &i : field.Data()) i = std::polar(static_cast<Float>(1.f),dis(gen));
+   for (auto &i : field.Data()) i = std::polar(static_cast<FloatT>(1.f),dis(gen));
 }
 
 void init_spinor(auto &field){
-   for (auto &i : field.Data()) i = dis(gen); //std::complex<Float>(1.f, 0.f);
+   for (auto &i : field.Data()) i = dis(gen); //std::complex<FloatT>(1.f, 0.f);
 }
 
 template<GenericStaggeredSpinorFieldTp field_tp>
@@ -59,9 +59,9 @@ int main(int argc, char **argv)
   constexpr int X = 32;
   constexpr int T = 32;
 
-  const Float mass = 0.05;
+  const FloatT mass = 0.05;
 
-  DslashParam<Float> dslash_param{mass};
+  DslashParam<FloatT> dslash_param{mass};
 
   const int niter = 100;
   

@@ -1,10 +1,12 @@
 #pragma once
 
+using SloppyFloat = float;
+
 using vector_tp         = std::vector<std::complex<Float>>;
-using sloppy_vector_tp  = std::vector<std::complex<float>>;
+using sloppy_vector_tp  = std::vector<std::complex<SloppyFloat>>;
 
 using pmr_vector_tp         = impl::pmr::vector<std::complex<Float>>;
-using sloppy_pmr_vector_tp  = impl::pmr::vector<std::complex<float>>;
+using sloppy_pmr_vector_tp  = impl::pmr::vector<std::complex<SloppyFloat>>;
 
 #include <staggered_dslash_reference.h> 
 #include <improved_staggered_dslash_reference.h>
@@ -106,9 +108,9 @@ void run_pmr_dslash_test(auto params, const auto dims, const int niter, const in
   if constexpr (do_check) { 
     const int parity_bit = parity == FieldParity::EvenFieldParity ? 0 : 1;
 #if 1  
-    StaggeredDslashRef<float>(chk_spinor.View(), src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, params.M, chk_spinor.GetCBDims(), parity_bit); 
+    StaggeredDslashRef<SloppyFloat>(chk_spinor.View(), src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, params.M, chk_spinor.GetCBDims(), parity_bit); 
 #else
-    ImprovedDslashRef<float>(chk_spinor, src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, sloppy_long_lnks, params.M, chk_spinor.GetCBDims(), parity_bit);
+    ImprovedDslashRef<SloppyFloat>(chk_spinor, src_spinor.Even(),  src_spinor.Even(), sloppy_fat_lnks, sloppy_long_lnks, params.M, chk_spinor.GetCBDims(), parity_bit);
 #endif    
 
 
